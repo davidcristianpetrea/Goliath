@@ -56,10 +56,10 @@ func BaseDir() string {
 	return dir
 }
 
-// KeyDir holds jwt.key and secret.key: ARTEX_JWT_KEY_DIR (the Docker image points
-// it at the /app/keys volume) or the base dir. Never the browsable data dir.
+// KeyDir holds jwt.key and secret.key: GOLIATH_JWT_KEY_DIR / ARTEX_JWT_KEY_DIR
+// (or the base dir). Never the browsable data dir.
 func KeyDir() string {
-	dir := strings.TrimSpace(os.Getenv("ARTEX_JWT_KEY_DIR"))
+	dir := EnvOr("GOLIATH_JWT_KEY_DIR", "ARTEX_JWT_KEY_DIR")
 	if dir == "" {
 		dir = BaseDir()
 	}
@@ -97,7 +97,7 @@ func isGoRunDir(dir string) bool {
 // The first existing file wins. If none exist, the CWD path is returned so the
 // "not found" message points at the project dir the user most likely expected.
 func Path() string {
-	if v := strings.TrimSpace(os.Getenv("ARTEX_CONFIG")); v != "" {
+	if v := EnvOr("GOLIATH_CONFIG", "ARTEX_CONFIG"); v != "" {
 		return v
 	}
 	var candidates []string
@@ -179,6 +179,9 @@ func SkillDir() (string, error) {
 // instead of silently connecting to a wrong default. source describes where the
 // DSN came from (for startup logging).
 func PostgresDSN() (dsn, source string, err error) {
+	if v := EnvOr("GOLIATH_PG_DSN", ""); v != "" {
+		return v, "environment variable GOLIATH_PG_DSN", nil
+	}
 	if v := strings.TrimSpace(os.Getenv("ARTEX_PG_DSN")); v != "" {
 		return v, "environment variable ARTEX_PG_DSN", nil
 	}
@@ -203,12 +206,15 @@ func PostgresDSN() (dsn, source string, err error) {
 // ok is false when none of them is set. The password is not trimmed: a space is
 // a legal character and is the case docker-compose used to break.
 func postgresDSNFromEnv() (dsn string, ok bool, err error) {
-	host := strings.TrimSpace(os.Getenv("ARTEX_PG_HOST"))
-	user := strings.TrimSpace(os.Getenv("ARTEX_PG_USER"))
-	password := os.Getenv("ARTEX_PG_PASSWORD")
-	dbname := strings.TrimSpace(os.Getenv("ARTEX_PG_DBNAME"))
-	portStr := strings.TrimSpace(os.Getenv("ARTEX_PG_PORT"))
-	ssl := strings.TrimSpace(os.Getenv("ARTEX_PG_SSLMODE"))
+	host := EnvOr("GOLIATH_PG_HOST", "ARTEX_PG_HOST")
+	user := EnvOr("GOLIATH_PG_USER", "ARTEX_PG_USER")
+	password := os.Getenv("GOLIATH_PG_PASSWORD")
+	if password == "" {
+		password = os.Getenv("ARTEX_PG_PASSWORD")
+	}
+	dbname := EnvOr("GOLIATH_PG_DBNAME", "ARTEX_PG_DBNAME")
+	portStr := EnvOr("GOLIATH_PG_PORT", "ARTEX_PG_PORT")
+	ssl := EnvOr("GOLIATH_PG_SSLMODE", "ARTEX_PG_SSLMODE")
 	if host == "" && user == "" && password == "" && dbname == "" && portStr == "" && ssl == "" {
 		return "", false, nil
 	}

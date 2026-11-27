@@ -382,3 +382,25 @@ func TestTrimErrKeepsValidUTF8(t *testing.T) {
 		t.Fatalf("trimErr = %q (%d bytes), want at most 300 bytes plus …", got, len(got))
 	}
 }
+
+func TestPoolOrderChargesMaxTokens(t *testing.T) {
+	small, big := okProv("small", "s"), okProv("big", "b")
+	ms := member(1, "small", 10, small)
+	ms.WindowTokens = 8192
+	mb := member(2, "big", 5, big)
+	mb.WindowTokens = 32768
+	p := New([]*Member{ms, mb}, NewRegistry(nil, nil))
+
+	// Input is ~1000 tokens, but MaxTokens=8000 makes total > 8192.
+	req := llm.CompletionRequest{
+		MaxTokens: 8000,
+		Messages:  []llm.Message{llm.UserText(strings.Repeat("x", 3500))},
+	}
+	got, err := drain(p.Stream(context.Background(), req))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "b" || small.calls != 0 {
+		t.Fatalf("text=%q small.calls=%d, want large-window member when input+MaxTokens exceeds small WindowTokens", got, small.calls)
+	}
+}

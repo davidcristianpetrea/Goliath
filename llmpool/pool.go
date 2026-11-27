@@ -288,7 +288,11 @@ func estimateTokens(req llm.CompletionRequest) int {
 		// cheaply — charge a flat ~120 chars per top-level property instead.
 		n += len(t.Name) + len(t.Description) + len(t.InputSchema)*120
 	}
-	return n * 2 / 7 // ≈ len/3.5
+	est := n * 2 / 7 // ≈ len/3.5
+	if req.MaxTokens > 0 {
+		est += req.MaxTokens
+	}
+	return est
 }
 
 func blocksLen(bs []llm.ContentBlock) int {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
+import { GoliathLogo } from "@/components/goliath-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,16 +65,12 @@ export default function SetupPage() {
   return (
     <div className="flex h-dvh">
       {/* Left panel */}
-      <div className="hidden flex-col items-center justify-center bg-primary p-12 text-center lg:flex lg:w-1/3">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute size-80 rounded-full border border-primary-foreground/10" />
-          <div className="absolute size-60 rounded-full border border-primary-foreground/15" />
-          <div className="absolute size-40 rounded-full border border-primary-foreground/20" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <picture className="contents">
-            <source srcSet="/logo.webp" type="image/webp" />
-            <img src="/logo.png" alt="ARTEX" width={160} height={160} className="relative brightness-0 invert" />
-          </picture>
+      <div className="hidden flex-col items-center justify-center border-r border-white/10 bg-[#09090b] p-12 text-center text-[#f5f5f7] lg:flex lg:w-1/3">
+        <div className="relative flex flex-col items-center justify-center gap-6">
+          <div className="absolute size-80 rounded-full border border-white/5" />
+          <div className="absolute size-60 rounded-full border border-white/10" />
+          <div className="absolute size-40 rounded-full border border-white/15" />
+          <GoliathLogo variant="full" className="relative scale-125 text-[#f5f5f7]" />
         </div>
       </div>
 
@@ -88,7 +85,7 @@ export default function SetupPage() {
                     "The backend or database is temporarily unavailable. To avoid overwriting a password already set on this instance, setup is temporarily closed — restore the service and try again.",
                   )
                 : t(
-                    "First time using ARTEX? Enter the setup token from the server log, then set a login password for the account (at least 12 characters)",
+                    "First time using Goliath? Enter the setup token from the server log, then set a login password for the account (at least 12 characters)",
                   )}
             </p>
           </div>

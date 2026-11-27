@@ -54,7 +54,7 @@ const METHOD_COLOR: Record<string, string> = {
   DELETE: "bg-red-100 text-red-700",
   GET: "bg-emerald-100 text-emerald-700",
   HEAD: "bg-purple-100 text-purple-700",
-  OPTIONS: "bg-slate-100 text-slate-600",
+  OPTIONS: "bg-slate-500/15 text-slate-600 dark:text-slate-300",
   PATCH: "bg-orange-100 text-orange-700",
   POST: "bg-blue-100 text-blue-700",
   PUT: "bg-amber-100 text-amber-700",

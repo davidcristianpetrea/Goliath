@@ -1132,6 +1132,16 @@ export default function FindingsPage() {
             </SelectContent>
           </Select>
 
+          <Button
+            type="button"
+            size="sm"
+            variant={verificationStatus === "verified" ? "default" : "outline"}
+            onClick={() => setVerificationStatus(verificationStatus === "verified" ? "all" : "verified")}
+          >
+            <CircleCheckIcon className="size-3.5" />
+            {t("Verified only")}
+          </Button>
+
           <Select value={vulnclass} onValueChange={setVulnclass}>
             <SelectTrigger size="sm" className="w-40">
               <SelectValue placeholder={t("Vulnerability type")} />

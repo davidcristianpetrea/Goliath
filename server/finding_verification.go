@@ -193,6 +193,25 @@ func (s *Server) assessFindingVerification(ctx context.Context, findingID int64,
 		}
 		return db.VerificationUnverified, "quote not found in bound evidence: " + shortQuote(q)
 	}
+	if len(bodies) > 0 {
+		var fpIn agent.FPGateInput
+		fpIn.POELevel = poe
+		fpIn.Quotes = checked
+		for _, bb := range bodies {
+			if !bb.nonText && bb.text != "" {
+				fpIn.ProofBodies = append(fpIn.ProofBodies, bb.text)
+			}
+		}
+		if f, err := s.m.pg.GetFinding(findingID); err == nil && f != nil {
+			fpIn.Name = f.Name
+			fpIn.VulnClass = f.VulnClass
+			fpIn.Severity = f.Severity
+			fpIn.Summary = f.Summary
+		}
+		if fp := agent.AssessFalsePositiveRisk(fpIn); fp.Downgrade {
+			return db.VerificationUnverified, "FP guard: " + strings.Join(fp.Reasons, "; ")
+		}
+	}
 	return db.VerificationVerified, ""
 }
 

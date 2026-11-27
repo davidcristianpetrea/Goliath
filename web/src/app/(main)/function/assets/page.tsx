@@ -74,7 +74,7 @@ const METHOD_COLOR: Record<string, string> = {
   PATCH: "bg-orange-100 text-orange-700",
   DELETE: "bg-red-100 text-red-700",
   HEAD: "bg-purple-100 text-purple-700",
-  OPTIONS: "bg-slate-100 text-slate-600",
+  OPTIONS: "bg-slate-500/15 text-slate-600 dark:text-slate-300",
 };
 
 function MethodBadge({ method }: { method: string }) {

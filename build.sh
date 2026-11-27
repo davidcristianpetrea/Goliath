@@ -204,12 +204,13 @@ build_target() {
     *) die "unsupported OS: $goos (supported: linux, darwin, windows)" ;;
   esac
 
-  binary_name="artex"
-  [ "$goos" = "windows" ] && binary_name="artex.exe"
+  binary_name="goliath"
+  [ "$goos" = "windows" ] && binary_name="goliath.exe"
+  ARTEX_OUTPUT="${ARTEX_OUTPUT:-${GOLIATH_OUTPUT:-}}"
   if [ -n "${ARTEX_OUTPUT:-}" ] && [ "$ARTEX_RELEASE" != "1" ]; then
     output="$ARTEX_OUTPUT"
   else
-    output="${ARTEX_OUTPUT_DIR}/artex-${goos}-${goarch}/${binary_name}"
+    output="${ARTEX_OUTPUT_DIR}/goliath-${goos}-${goarch}/${binary_name}"
   fi
   mkdir -p "$(dirname "$output")"
 

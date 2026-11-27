@@ -2752,5 +2752,15 @@
   "Only for a self-hosted Bot API server or a relay. Changing it requires entering the token again.": "仅用于自托管的 Bot API 服务器或中转。修改后需要重新填写 Token。",
   "The bot uses long polling, so ARTEX opens no inbound port. Messages it sends contain summaries and links, never evidence bodies or credentials.": "机器人使用长轮询，因此 ARTEX 不会开放任何入站端口。它发送的消息只包含摘要和链接，绝不包含证据正文或凭据。",
   "The bot is off. Enter a token and switch it on.": "机器人已关闭。请填写 Token 并将其开启。",
-  "No chat is allowed yet: the bot refuses every chat and replies with its chat ID. Add your chat ID here to start using it.": "尚未允许任何聊天：机器人会拒绝所有聊天，并在回复中告知其聊天 ID。在此添加你的聊天 ID 即可开始使用。"
+  "No chat is allowed yet: the bot refuses every chat and replies with its chat ID. Add your chat ID here to start using it.": "尚未允许任何聊天：机器人会拒绝所有聊天，并在回复中告知其聊天 ID。在此添加你的聊天 ID 即可开始使用。",
+  "Welcome back — enter your password to continue using Goliath": "欢迎回来 — 请输入密码以继续使用 Goliath",
+  "First time using Goliath? Enter the setup token from the server log, then set a login password for the account (at least 12 characters)": "首次使用 Goliath？请输入服务器日志中的安装令牌，然后设置登录密码（至少 12 个字符）",
+  "Verified only": "仅已验证",
+  "Private/LAN LLM endpoints enabled": "已启用私有/局域网 LLM 端点",
+  "Private/LAN LLM endpoints disabled": "已禁用私有/局域网 LLM 端点",
+  "Allow private / LAN model endpoints": "允许私有 / 局域网模型端点",
+  "Allows fetching models from localhost and RFC1918 LAN hosts (Ollama, vLLM, local NVIDIA NIM). Cloud metadata IPs remain blocked.": "允许从 localhost 和 RFC1918 局域网主机（Ollama、vLLM、本地 NVIDIA NIM）获取模型列表。云元数据 IP 仍被阻止。",
+  "Allow private model endpoints toggle": "允许私有模型端点开关",
+  "Quick provider presets": "快速提供商预设",
+  "Goliath — Autonomous Penetration Testing Console": "Goliath — 自主渗透测试控制台"
 }

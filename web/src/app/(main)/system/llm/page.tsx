@@ -84,12 +84,51 @@ function cooldownText(secs: number) {
   return t("{n}min", { n: Math.ceil(secs / 60) });
 }
 
+const PROVIDER_PRESETS: Array<{
+  id: string;
+  label: string;
+  format: ProfileFormat;
+  baseUrl: string;
+  rpm?: string;
+  cw?: string;
+  maxTokens?: string;
+  defaultName?: string;
+}> = [
+  { id: "nim-cloud", label: "NVIDIA NIM", format: "openai", baseUrl: "https://integrate.api.nvidia.com/v1", rpm: "35", cw: "128", maxTokens: "8192", defaultName: "NVIDIA NIM" },
+  { id: "nim-local", label: "NIM Local", format: "openai", baseUrl: "http://127.0.0.1:8000/v1", cw: "128", defaultName: "NVIDIA NIM Local" },
+  { id: "ollama", label: "Ollama", format: "ollama", baseUrl: OLLAMA_DEFAULT_BASE_URL, defaultName: "Ollama Local" },
+  { id: "vllm", label: "vLLM", format: "openai", baseUrl: "http://127.0.0.1:8000/v1", defaultName: "vLLM Local" },
+  { id: "lmstudio", label: "LM Studio", format: "openai", baseUrl: "http://127.0.0.1:1234/v1", defaultName: "LM Studio" },
+  { id: "llamacpp", label: "llama.cpp", format: "openai", baseUrl: "http://127.0.0.1:8080/v1", defaultName: "llama.cpp" },
+  { id: "openrouter", label: "OpenRouter", format: "openai", baseUrl: "https://openrouter.ai/api/v1", defaultName: "OpenRouter" },
+  { id: "gemini", label: "Gemini", format: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", defaultName: "Google Gemini" },
+  { id: "deepseek", label: "DeepSeek", format: "openai", baseUrl: "https://api.deepseek.com/v1", defaultName: "DeepSeek" },
+  { id: "groq", label: "Groq", format: "openai", baseUrl: "https://api.groq.com/openai/v1", defaultName: "Groq" },
+  { id: "anthropic", label: "Anthropic", format: "anthropic", baseUrl: "", defaultName: "Anthropic" },
+  { id: "openai", label: "OpenAI", format: "openai", baseUrl: "https://api.openai.com/v1", defaultName: "OpenAI" },
+];
+
+function isLocalBaseUrl(raw?: string): boolean {
+  if (!raw) return false;
+  try {
+    const u = new URL(raw.trim());
+    const h = u.hostname.toLowerCase();
+    if (h === "localhost" || h.endsWith(".localhost") || h === "127.0.0.1" || h === "::1" || h === "[::1]") {
+      return true;
+    }
+    return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
+  } catch {
+    return false;
+  }
+}
+
 // The "healthy or not" badge a profile shows on its card. A profile without a Key cannot send any request at all — say that before the breaker;
-// the exception is Ollama, a keyless local server that IS callable without a key. The other states come from the pool's breaker
+// the exception is Ollama and local/LAN OpenAI-compatible servers, which are callable without a key. The other states come from the pool's breaker
 // records (with polling off no new records appear, so "healthy" = no known failure).
 type Health = { label: string; cls: string; hint?: string };
 function healthOf(p: LLMProfile, m?: LLMPoolMember): Health {
-  if (!p.api_key_hint && p.format !== "ollama") {
+  const keylessOK = p.format === "ollama" || ((p.format === "openai" || p.format === "openai-responses") && isLocalBaseUrl(p.base_url));
+  if (!p.api_key_hint && !keylessOK) {
     return {
       label: t("No Key configured"),
       cls: "border-muted-foreground/40 text-muted-foreground",
@@ -129,6 +168,12 @@ function PoolSheet({
   onReload: () => Promise<void>;
 }) {
   const [busy, setBusy] = React.useState(false);
+  const [allowPrivate, setAllowPrivate] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    api.settings().then((s) => setAllowPrivate(Boolean(s.llm_allow_private_endpoints))).catch(() => {});
+  }, [open]);
 
   // The cooldown countdown is the remaining seconds computed by the backend — fetched on a timer only while the drawer is open and some profile is unhealthy, to keep it ticking.
   React.useEffect(() => {
@@ -137,16 +182,21 @@ function PoolSheet({
     return stopPolling;
   }, [open, pool, onReload]);
 
-  async function toggle(patch: { llm_pool_enabled?: boolean; llm_pool_bind_fallback?: boolean }) {
+  async function toggle(patch: { llm_pool_enabled?: boolean; llm_pool_bind_fallback?: boolean; llm_allow_private_endpoints?: boolean }) {
     if (busy) return;
     setBusy(true);
     try {
       await api.setSettings(patch);
-      await onReload();
-      if (patch.llm_pool_enabled !== undefined) {
-        toast.success(patch.llm_pool_enabled ? t("LLM pool enabled") : t("LLM pool disabled"));
+      if (patch.llm_allow_private_endpoints !== undefined) {
+        setAllowPrivate(patch.llm_allow_private_endpoints);
+        toast.success(patch.llm_allow_private_endpoints ? t("Private/LAN LLM endpoints enabled") : t("Private/LAN LLM endpoints disabled"));
       } else {
-        toast.success(t("Fallback settings updated"));
+        await onReload();
+        if (patch.llm_pool_enabled !== undefined) {
+          toast.success(patch.llm_pool_enabled ? t("LLM pool enabled") : t("LLM pool disabled"));
+        } else {
+          toast.success(t("Fallback settings updated"));
+        }
       }
     } catch (e) {
       toast.error(t("Failed to apply settings: {error}", { error: (e as Error).message }));
@@ -198,6 +248,19 @@ function PoolSheet({
               disabled={busy}
               onCheckedChange={(v) => void toggle({ llm_pool_enabled: v })}
               aria-label={t("LLM pool toggle")}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+            <div className="grid gap-0.5">
+              <Label className="text-sm">{t("Allow private / LAN model endpoints")}</Label>
+              <p className="text-muted-foreground text-xs">{t("Allows fetching models from localhost and RFC1918 LAN hosts (Ollama, vLLM, local NVIDIA NIM). Cloud metadata IPs remain blocked.")}</p>
+            </div>
+            <Switch
+              checked={allowPrivate}
+              disabled={busy}
+              onCheckedChange={(v) => void toggle({ llm_allow_private_endpoints: v })}
+              aria-label={t("Allow private model endpoints toggle")}
             />
           </div>
 
@@ -562,6 +625,30 @@ function ProfileSheet({
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+          <div className="grid gap-1.5">
+            <Label className="text-muted-foreground text-xs">{t("Quick provider presets")}</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {PROVIDER_PRESETS.map((preset) => (
+                <Button
+                  key={preset.id}
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => {
+                    setFormat(preset.format);
+                    setBaseUrl(preset.baseUrl);
+                    if (!name.trim() && preset.defaultName) setName(preset.defaultName);
+                    if (preset.rpm) setRpm(preset.rpm);
+                    if (preset.cw) setCw(preset.cw);
+                    if (preset.maxTokens) setMaxTokens(preset.maxTokens);
+                  }}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="p-name">{t("Name")}</Label>

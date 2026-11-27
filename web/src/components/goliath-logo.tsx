@@ -1,0 +1,49 @@
+import * as React from "react";
+
+import { cn } from "@/lib/utils";
+
+interface GoliathLogoProps {
+  variant?: "full" | "mark";
+  className?: string;
+}
+
+/**
+ * Architectural Goliath mark & full wordmark matching davidpetrea.ro's
+ * chamfered monochrome blade geometry (dual-polarity via currentColor).
+ */
+export function GoliathLogo({ variant = "full", className }: GoliathLogoProps) {
+  if (variant === "mark") {
+    return (
+      <svg
+        viewBox="0 0 64 64"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className={cn("size-7 shrink-0", className)}
+        aria-label="Goliath"
+      >
+        <path
+          fill="currentColor"
+          d="M8 20.5L32 6.6C32.7 6.2 33.5 6.2 34.2 6.6L55 18.6C55.6 19 56 19.6 56 20.3V28.4C56 29.2 55.1 29.7 54.4 29.3L33.1 17L19 25.1V38.9L33.1 47L45 40.1V35.5H34.5C33.7 35.5 33 34.8 33 34V27.5C33 26.7 33.7 26 34.5 26H54.5C55.3 26 56 26.7 56 27.5V43.7C56 44.4 55.6 45 55 45.4L34.2 57.4C33.5 57.8 32.7 57.8 32 57.4L8 43.5C7.4 43.1 7 42.5 7 41.8V22.2C7 21.5 7.4 20.9 8 20.5Z"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <span className={cn("inline-flex items-center gap-2.5 select-none", className)}>
+      <svg
+        viewBox="0 0 64 64"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="size-7 shrink-0"
+        aria-hidden="true"
+      >
+        <path
+          fill="currentColor"
+          d="M8 20.5L32 6.6C32.7 6.2 33.5 6.2 34.2 6.6L55 18.6C55.6 19 56 19.6 56 20.3V28.4C56 29.2 55.1 29.7 54.4 29.3L33.1 17L19 25.1V38.9L33.1 47L45 40.1V35.5H34.5C33.7 35.5 33 34.8 33 34V27.5C33 26.7 33.7 26 34.5 26H54.5C55.3 26 56 26.7 56 27.5V43.7C56 44.4 55.6 45 55 45.4L34.2 57.4C33.5 57.8 32.7 57.8 32 57.4L8 43.5C7.4 43.1 7 42.5 7 41.8V22.2C7 21.5 7.4 20.9 8 20.5Z"
+        />
+      </svg>
+      <span className="font-semibold tracking-[0.14em] text-sm uppercase">GOLIATH</span>
+    </span>
+  );
+}

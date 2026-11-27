@@ -1002,6 +1002,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/tools/custom/{key}", s.pgUpdateCustomTool)
 	mux.HandleFunc("DELETE /api/tools/custom/{key}", s.pgDeleteCustomTool)
 	mux.HandleFunc("POST /api/settings/python/detect", s.pgDetectPython)
+	mux.HandleFunc("GET /api/system/tools-inventory", s.pgToolsInventory)
 	mux.HandleFunc("POST /api/tools/{key}/reset", s.pgResetTool)
 	// MCP CRUD
 	mux.HandleFunc("GET /api/mcp", s.pgListMCP)
@@ -3964,8 +3965,9 @@ func (s *Server) settingsPayload() map[string]any {
 		"task_concurrency_limit":   concLimit,                   // max simultaneously running tasks (default 5 when enabled)
 		// LLM failover pool. Default off; when on, agents on the global active profile automatically
 		// switch to the next profile when the current one is unavailable. bind_fallback only matters when the pool is on (default off).
-		"llm_pool_enabled":       s.m.LLMPoolEnabled(),
-		"llm_pool_bind_fallback": s.m.LLMPoolBindFallback(),
+		"llm_pool_enabled":            s.m.LLMPoolEnabled(),
+		"llm_pool_bind_fallback":      s.m.LLMPoolBindFallback(),
+		"llm_allow_private_endpoints": s.allowPrivateModels(),
 		// operation-constraint injection scope (default both on): splices this task's allow/deny constraints into the matching agents' system prompts.
 		"constraints_inject_planner": s.constraintInjectPlanner(),
 		"constraints_inject_worker":  s.constraintInjectWorker(),
@@ -4044,8 +4046,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		ConcurrencyLimit   *int  `json:"task_concurrency_limit"`
 		// LLM failover pool switch + the "fall back to the pool chain even when a bound profile fails" switch. Both need the
 		// provider chain rebuilt to take effect, via the changed → applyLLM path below.
-		LLMPoolEnabled      *bool `json:"llm_pool_enabled"`
-		LLMPoolBindFallback *bool `json:"llm_pool_bind_fallback"`
+		LLMPoolEnabled           *bool `json:"llm_pool_enabled"`
+		LLMPoolBindFallback      *bool `json:"llm_pool_bind_fallback"`
+		LLMAllowPrivateEndpoints *bool `json:"llm_allow_private_endpoints"`
 		// operation-constraint injection scope switches (default both on); take effect immediately (planner/worker read them every round), no agent rebuild needed.
 		ConstraintsInjectPlanner *bool `json:"constraints_inject_planner"`
 		ConstraintsInjectWorker  *bool `json:"constraints_inject_worker"`
@@ -4132,6 +4135,12 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.TriageProfileID != nil {
 		if err := s.m.pg.SetSetting(settingTriageProfile, strconv.FormatInt(*req.TriageProfileID, 10)); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.LLMAllowPrivateEndpoints != nil {
+		if err := s.m.pg.SetBool("llm_allow_private_endpoints", *req.LLMAllowPrivateEndpoints); err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}

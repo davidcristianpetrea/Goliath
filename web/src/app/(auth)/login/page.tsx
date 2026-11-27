@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 
+import { GoliathLogo } from "@/components/goliath-logo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -69,7 +70,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const { token } = await api.login("ARTEX", password);
+      const { token } = await api.login("Goliath", password);
       auth.setToken(token);
       window.location.replace("/function/tasks");
     } catch {
@@ -94,16 +95,12 @@ export default function LoginPage() {
   return (
     <div className="flex h-dvh">
       {/* Left panel */}
-      <div className="hidden flex-col items-center justify-center bg-primary p-12 text-center lg:flex lg:w-1/3">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute size-80 rounded-full border border-primary-foreground/10" />
-          <div className="absolute size-60 rounded-full border border-primary-foreground/15" />
-          <div className="absolute size-40 rounded-full border border-primary-foreground/20" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <picture className="contents">
-            <source srcSet="/logo.webp" type="image/webp" />
-            <img src="/logo.png" alt="ARTEX" width={160} height={160} className="relative brightness-0 invert" />
-          </picture>
+      <div className="hidden flex-col items-center justify-center border-r border-white/10 bg-[#09090b] p-12 text-center text-[#f5f5f7] lg:flex lg:w-1/3">
+        <div className="relative flex flex-col items-center justify-center gap-6">
+          <div className="absolute size-80 rounded-full border border-white/5" />
+          <div className="absolute size-60 rounded-full border border-white/10" />
+          <div className="absolute size-40 rounded-full border border-white/15" />
+          <GoliathLogo variant="full" className="relative scale-125 text-[#f5f5f7]" />
         </div>
       </div>
 
@@ -113,13 +110,13 @@ export default function LoginPage() {
           <div className="space-y-4 text-center">
             <h2 className="text-2xl font-medium tracking-tight">{t("Sign in")}</h2>
             <p className="mx-auto max-w-xl text-muted-foreground">
-              {t("Welcome back — enter your password to continue using ARTEX")}
+              {t("Welcome back — enter your password to continue using Goliath")}
             </p>
           </div>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="username">{t("Username")}</Label>
-              <Input id="username" value="ARTEX" readOnly className="bg-muted text-muted-foreground" />
+              <Input id="username" value="Goliath" readOnly className="bg-muted text-muted-foreground" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">{t("Password")}</Label>

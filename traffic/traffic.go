@@ -1557,6 +1557,34 @@ FROM exchange_bodies b JOIN exchanges e ON e.id=b.id WHERE b.id=?`, id).
 	return string(rb), string(pb), nil
 }
 
+func decodeRawResponseForDisplay(raw string) string {
+	sep := "\r\n\r\n"
+	idx := strings.Index(raw, sep)
+	if idx < 0 {
+		sep = "\n\n"
+		idx = strings.Index(raw, sep)
+	}
+	if idx < 0 {
+		return raw
+	}
+	headPart := raw[:idx]
+	bodyPart := raw[idx+len(sep):]
+	if bodyPart == "" {
+		return raw
+	}
+	_, _, headers := parseStoredResponseHead(headPart)
+	ce := findHeaderValue(headers, "Content-Encoding")
+	if ce == "" {
+		return raw
+	}
+	h := http.Header{}
+	h.Set("Content-Encoding", ce)
+	if dec, ok := decodeBody(h, []byte(bodyPart), 256*1024); ok && len(dec) > 0 {
+		return headPart + sep + string(dec)
+	}
+	return raw
+}
+
 // assembleRaw rebuilds one side's raw HTTP text: head, blank line, body. A body
 // that spilled to the blob store shows its inline preview followed by the blob
 // pointer, so the reader can see what it is and fetch the rest by hash.
@@ -2504,14 +2532,19 @@ func (t *Traffic) query(host, contains, bodyContains string, page, limit int) ([
 		if err != nil {
 			return nil, err
 		}
-		q += ` AND host=?`
+		q += ` AND LOWER(host)=?`
 		args = append(args, hostName)
 		if port != "" {
 			// Recorded rows historically store URL.Hostname() (without the port),
 			// so constrain the original URL authority as a compatibility fallback.
 			// New and old captures therefore share the same search contract.
 			authority := net.JoinHostPort(hostName, port)
-			prefixes := []string{"%://" + authority}
+			prefixes := []string{
+				"http://" + authority,
+				"https://" + authority,
+				"ws://" + authority,
+				"wss://" + authority,
+			}
 			// Clients leave a default port out of the Host header, so a capture
 			// of https://host:443 is recorded as https://host, and a WebSocket
 			// over it as wss://host.
@@ -2683,6 +2716,7 @@ func (t *Traffic) Tools() []actool.CoreTool {
 			if rewritten {
 				head = fmt.Sprintf("=== REWRITTEN === rewrite rules %v changed this exchange in the proxy. Shown below: the request as the client sent it and the response as the target sent it, not the rewritten values.\n\n", ruleIDs)
 			}
+			resp = decodeRawResponseForDisplay(resp)
 			return actool.Text(head + "=== REQUEST ===\n" + clip(req, 2500) + "\n\n=== RESPONSE ===\n" + clip(resp, 4000)), nil
 		},
 	})

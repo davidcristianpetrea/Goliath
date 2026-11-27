@@ -187,12 +187,14 @@ JSON
 }
 
 echo "=============================="
-echo "  ARTEX Install"
-echo "  1) All-Docker install"
-echo "  2) Run locally (go build)"
+echo "  Goliath Install"
+echo "  1) Native Linux / Proxmox LXC (no Docker, recommended)"
+echo "  2) All-Docker install"
+echo "  3) Run locally (go build)"
 echo "=============================="
 case "$(ask 'Choose' 1)" in
-  1) install_docker ;;
-  2) install_local ;;
+  1) exec bash "$(dirname "$0")/scripts/lxc-install.sh" ;;
+  2) install_docker ;;
+  3) install_local ;;
   *) die "invalid choice" ;;
 esac

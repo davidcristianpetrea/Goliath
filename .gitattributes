@@ -1,5 +1,6 @@
 *.bat text eol=crlf
 *.sh  text eol=lf
+*.service text eol=lf
 scripts/poc/ export-ignore
 skills/edr-bypass-re/ export-ignore
 skills/php2shell/ export-ignore

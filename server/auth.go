@@ -645,7 +645,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request, getSetting func(s
 		writeErr(w, 400, "Invalid request format")
 		return
 	}
-	if req.Username != "ARTEX" {
+	if !strings.EqualFold(strings.TrimSpace(req.Username), "Goliath") && req.Username != "ARTEX" {
 		writeErr(w, 401, "Incorrect username or password")
 		return
 	}

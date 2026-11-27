@@ -918,3 +918,24 @@ func TestLLMModelsPublicEndpointWorks(t *testing.T) {
 		t.Fatalf("unexpected models: %v", rawModels)
 	}
 }
+
+func TestLLMModelsPrivateAllowToggleStillBlocksMetadata(t *testing.T) {
+	t.Setenv(LLMPrivateEndpointsEnv, "")
+	t.Setenv("GOLIATH_LLM_ALLOW_PRIVATE", "")
+	t.Setenv("ARTEX_LLM_ALLOW_PRIVATE", "")
+
+	s := &Server{}
+	gClosed := newModelURLGuard(s)
+	if _, err := gClosed.validateURL(context.Background(), "http://192.168.1.50:11434/v1/models", "endpoint"); err == nil {
+		t.Fatal("expected 192.168.1.50 to be blocked when allowPrivate is false")
+	}
+
+	t.Setenv("GOLIATH_LLM_ALLOW_PRIVATE", "1")
+	gOpen := newModelURLGuard(s)
+	if _, err := gOpen.validateURL(context.Background(), "http://192.168.1.50:11434/v1/models", "endpoint"); err != nil {
+		t.Fatalf("expected 192.168.1.50 to be allowed when GOLIATH_LLM_ALLOW_PRIVATE=1, got %v", err)
+	}
+	if _, err := gOpen.validateURL(context.Background(), "http://169.254.169.254/latest/meta-data/", "endpoint"); err == nil {
+		t.Fatal("expected cloud metadata 169.254.169.254 to remain blocked even when GOLIATH_LLM_ALLOW_PRIVATE=1")
+	}
+}

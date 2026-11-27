@@ -2752,5 +2752,15 @@
   "Only for a self-hosted Bot API server or a relay. Changing it requires entering the token again.": "Yalnızca kendi barındırdığınız bir Bot API sunucusu veya aktarıcı için. Değiştirirseniz token'ı yeniden girmeniz gerekir.",
   "The bot uses long polling, so ARTEX opens no inbound port. Messages it sends contain summaries and links, never evidence bodies or credentials.": "Bot uzun yoklama kullanır, bu yüzden ARTEX gelen bağlantılar için port açmaz. Gönderdiği mesajlar yalnızca özet ve bağlantı içerir; asla kanıt gövdesi veya kimlik bilgisi içermez.",
   "The bot is off. Enter a token and switch it on.": "Bot kapalı. Bir token girin ve botu açın.",
-  "No chat is allowed yet: the bot refuses every chat and replies with its chat ID. Add your chat ID here to start using it.": "Henüz hiçbir sohbete izin verilmedi: bot her sohbeti reddeder ve sohbet kimliğini yanıtında bildirir. Kullanmaya başlamak için sohbet kimliğinizi buraya ekleyin."
+  "No chat is allowed yet: the bot refuses every chat and replies with its chat ID. Add your chat ID here to start using it.": "Henüz hiçbir sohbete izin verilmedi: bot her sohbeti reddeder ve sohbet kimliğini yanıtında bildirir. Kullanmaya başlamak için sohbet kimliğinizi buraya ekleyin.",
+  "Welcome back — enter your password to continue using Goliath": "Tekrar hoş geldiniz — Goliath kullanmaya devam etmek için şifrenizi girin",
+  "First time using Goliath? Enter the setup token from the server log, then set a login password for the account (at least 12 characters)": "Goliath'ı ilk kez mi kullanıyorsunuz? Sunucu günlüğündeki kurulum belirtecini girin ve hesap için bir giriş şifresi belirleyin (en az 12 karakter)",
+  "Verified only": "Yalnızca doğrulanmış",
+  "Private/LAN LLM endpoints enabled": "Özel/LAN LLM uç noktaları etkinleştirildi",
+  "Private/LAN LLM endpoints disabled": "Özel/LAN LLM uç noktaları devre dışı bırakıldı",
+  "Allow private / LAN model endpoints": "Özel / LAN model uç noktalarına izin ver",
+  "Allows fetching models from localhost and RFC1918 LAN hosts (Ollama, vLLM, local NVIDIA NIM). Cloud metadata IPs remain blocked.": "localhost ve RFC1918 LAN ana bilgisayarlarından (Ollama, vLLM, yerel NVIDIA NIM) model çekilmesine izin verir. Bulut meta veri IP'leri engellenmeye devam eder.",
+  "Allow private model endpoints toggle": "Özel model uç noktalarına izin ver anahtarı",
+  "Quick provider presets": "Hızlı sağlayıcı ön ayarları",
+  "Goliath — Autonomous Penetration Testing Console": "Goliath — Otonom Sızma Testi Konsolu"
 }

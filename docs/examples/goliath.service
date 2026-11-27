@@ -1,0 +1,31 @@
+[Unit]
+Description=Goliath Autonomous Penetration Testing Platform
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=goliath
+Group=goliath
+WorkingDirectory=/opt/goliath
+ExecStart=/opt/goliath/goliath
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65535
+
+Environment=GOLIATH_ADDR=0.0.0.0:8787
+Environment=GOLIATH_PORT=8787
+Environment=GOLIATH_PROXY_ADDR=127.0.0.1:8788
+Environment=GOLIATH_PROXY_PORT=8788
+Environment=GOLIATH_JWT_KEY_DIR=/opt/goliath/keys
+Environment=GOLIATH_LLM_ALLOW_PRIVATE=1
+Environment=NUCLEI_TEMPLATES_DIR=/opt/nuclei-templates
+Environment=DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD=true
+
+# LXC-compatible hardening (safe for unprivileged Proxmox LXC containers)
+NoNewPrivileges=yes
+PrivateTmp=yes
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

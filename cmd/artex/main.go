@@ -60,17 +60,17 @@ func logConfigSnapshot(s configSnapshot) {
 var version = "dev"
 
 const banner = `
-    _    ____ _____ _______  __
-   / \  |  _ \_   _| ____\ \/ /
-  / _ \ | |_) || | |  _|  \  /
- / ___ \|  _ < | | | |___ /  \
-/_/   \_\_| \_\|_| |_____/_/\_\
+   ____  ___  _     ___    _  _____ _   _ 
+  / ___|/ _ \| |   |_ _|  / \|_   _| | | |
+ | |  _| | | | |    | |  / _ \ | | | |_| |
+ | |_| | |_| | |___ | | / ___ \| | |  _  |
+  \____|\___/|_____|___/_/   \_\_| |_| |_|
 `
 
 // printBanner writes the startup banner + version/runtime info to stdout.
 func printBanner(addr string) {
 	fmt.Print(banner)
-	fmt.Println("  AI autonomous penetration testing system")
+	fmt.Println("  Goliath — autonomous penetration testing platform")
 	fmt.Printf("  version %s  ·  %s/%s  ·  %s  ·  listening on %s\n\n",
 		version, runtime.GOOS, runtime.GOARCH, runtime.Version(), addr)
 }
@@ -111,6 +111,21 @@ func run() int {
 	)
 	flag.Parse()
 
+	if !flagWasSet("addr") {
+		if v := config.EnvOr("GOLIATH_ADDR", "ARTEX_ADDR"); v != "" {
+			*addr = v
+		} else if p := config.EnvOr("GOLIATH_PORT", "ARTEX_PORT"); p != "" {
+			*addr = "0.0.0.0:" + p
+		}
+	}
+	if !flagWasSet("proxy") {
+		if v := config.EnvOr("GOLIATH_PROXY_ADDR", "ARTEX_PROXY_ADDR"); v != "" {
+			*proxy = v
+		} else if p := config.EnvOr("GOLIATH_PROXY_PORT", "ARTEX_PROXY_PORT"); p != "" {
+			*proxy = "127.0.0.1:" + p
+		}
+	}
+
 	// hand the build version to the server package so GET /api/health can report it
 	// to the frontend top bar.
 	server.BuildVersion = version
@@ -142,7 +157,7 @@ func run() int {
 	// JWT signing key directory (also holds secret.key, see server.NewManager).
 	keyDir := config.KeyDir()
 	// Proxies whose X-Forwarded-For the login rate limit reads; empty trusts none.
-	trusted, err := server.ParseTrustedProxies(os.Getenv("ARTEX_TRUSTED_PROXIES"))
+	trusted, err := server.ParseTrustedProxies(config.EnvOr("GOLIATH_TRUSTED_PROXIES", "ARTEX_TRUSTED_PROXIES"))
 	if err != nil {
 		slog.Error("[config] invalid ARTEX_TRUSTED_PROXIES", "err", err)
 		return 1

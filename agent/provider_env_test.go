@@ -52,3 +52,26 @@ func TestBedrockGatewayEnvDoesNotInheritPublicProviderKey(t *testing.T) {
 		t.Fatal("gateway environment was not resolved")
 	}
 }
+
+func TestLocalOpenAIKeylessAndNvidiaNIMNormalization(t *testing.T) {
+	cLocal := ConfigFrom("openai", "meta/llama-3.1-70b-instruct", "http://127.0.0.1:8000/v1", "", "")
+	if cLocal.NeedsAPIKey() {
+		t.Fatal("local OpenAI-compatible endpoint should not require an API key")
+	}
+	if _, err := cLocal.NewProvider(); err != nil {
+		t.Fatalf("local keyless OpenAI NewProvider failed: %v", err)
+	}
+
+	cLAN := ConfigFrom("openai", "qwen2.5-coder", "http://192.168.1.50:1234/v1", "", "")
+	if cLAN.NeedsAPIKey() {
+		t.Fatal("LAN RFC1918 OpenAI-compatible endpoint should not require an API key")
+	}
+
+	cNIM := ConfigFrom("openai", "nvidia/llama-3.1-nemotron-70b-instruct", "https://integrate.api.nvidia.com", "nvapi-test", "")
+	if cNIM.BaseURL != "https://integrate.api.nvidia.com/v1" {
+		t.Fatalf("NIM BaseURL = %q, want https://integrate.api.nvidia.com/v1", cNIM.BaseURL)
+	}
+	if !cNIM.NeedsAPIKey() {
+		t.Fatal("cloud NVIDIA NIM should require an API key")
+	}
+}

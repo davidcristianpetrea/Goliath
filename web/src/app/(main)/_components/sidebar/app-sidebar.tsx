@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { GoliathLogo } from "@/components/goliath-logo";
 import { APP_CONFIG } from "@/config/app-config";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
@@ -40,14 +41,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link prefetch={false} href="/function/tasks">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <picture className="contents">
-                  <source srcSet="/logo.webp" type="image/webp" />
-                  <img src="/logo.png" alt="ARTEX" width={40} height={40} className="shrink-0" />
-                </picture>
-                <span className="font-semibold text-base">{APP_CONFIG.name}</span>
+            <SidebarMenuButton asChild size="lg">
+              <Link prefetch={false} href="/function/tasks" aria-label={APP_CONFIG.name}>
+                <GoliathLogo variant="full" className="group-data-[collapsible=icon]:hidden" />
+                <GoliathLogo variant="mark" className="hidden group-data-[collapsible=icon]:block" />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

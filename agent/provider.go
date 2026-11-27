@@ -17,12 +17,15 @@ import (
 	"iter"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Autumn-27/artex/config"
 	"github.com/Autumn-27/artex/llmrec"
 	"github.com/Autumn-27/norma/agentcore"
 	"github.com/Autumn-27/norma/compaction"
@@ -174,9 +177,50 @@ func normalizeOllamaBaseURL(raw string) string {
 	return b
 }
 
+// isLocalEndpoint reports whether rawURL points to loopback or an RFC1918
+// private host (local Ollama, vLLM, LM Studio, llama.cpp, or local NVIDIA NIM).
+func isLocalEndpoint(rawURL string) bool {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || u.Hostname() == "" {
+		return false
+	}
+	h := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	if h == "localhost" || strings.HasSuffix(h, ".localhost") {
+		return true
+	}
+	ip, err := netip.ParseAddr(h)
+	if err != nil {
+		return false
+	}
+	ip = ip.Unmap()
+	return ip.IsLoopback() || ip.IsPrivate()
+}
+
+// normalizeOpenAICompatBaseURL cleans pasted OpenAI-compatible URLs and ensures
+// NVIDIA NIM bare host URLs (https://integrate.api.nvidia.com) include /v1.
+func normalizeOpenAICompatBaseURL(raw string) string {
+	b := strings.TrimRight(strings.TrimSuffix(strings.TrimSpace(raw), "/chat/completions"), "/")
+	if b == "" {
+		return ""
+	}
+	if u, err := url.Parse(b); err == nil && strings.EqualFold(u.Hostname(), "integrate.api.nvidia.com") && (u.Path == "" || u.Path == "/") {
+		return b + "/v1"
+	}
+	return b
+}
+
 // NeedsAPIKey reports whether this provider format requires an API key to be
-// usable. Ollama (local server) is keyless; every cloud format needs one.
-func (c Config) NeedsAPIKey() bool { return c.Format != FormatOllama }
+// usable. Ollama and local/LAN OpenAI-compatible servers (vLLM, LM Studio,
+// llama.cpp, local NVIDIA NIM) can run keyless; cloud endpoints require a key.
+func (c Config) NeedsAPIKey() bool {
+	if c.Format == FormatOllama {
+		return false
+	}
+	if (c.Format == llm.FormatOpenAI || c.Format == llm.FormatOpenAIResponses) && isLocalEndpoint(c.BaseURL) {
+		return false
+	}
+	return true
+}
 
 // CompactionWindow returns the model context window in TOKENS for compaction
 // thresholds, resolved from the user-configured size (ContextWindowK). 0/unset →
@@ -231,7 +275,7 @@ func compactionConfig(windowTokens int) *compaction.Config {
 func FromEnv() (Config, bool) {
 	// Case- and space-insensitive: "Ollama" used to miss every case below and
 	// fall through to anthropic, sending ANTHROPIC_API_KEY to the Ollama base URL.
-	prov := strings.ToLower(strings.TrimSpace(os.Getenv("ARTEX_LLM_PROVIDER")))
+	prov := strings.ToLower(config.EnvOr("GOLIATH_LLM_PROVIDER", "ARTEX_LLM_PROVIDER"))
 	anthKey := os.Getenv("ANTHROPIC_API_KEY")
 	oaiKey := os.Getenv("OPENAI_API_KEY")
 
@@ -247,16 +291,17 @@ func FromEnv() (Config, bool) {
 	}
 
 	c := Config{
-		BaseURL: os.Getenv("ARTEX_LLM_BASE_URL"),
-		Model:   os.Getenv("ARTEX_LLM_MODEL"),
-		Proxy:   strings.TrimSpace(os.Getenv("ARTEX_LLM_PROXY")),
+		BaseURL: config.EnvOr("GOLIATH_LLM_BASE_URL", "ARTEX_LLM_BASE_URL"),
+		Model:   config.EnvOr("GOLIATH_LLM_MODEL", "ARTEX_LLM_MODEL"),
+		Proxy:   config.EnvOr("GOLIATH_LLM_PROXY", "ARTEX_LLM_PROXY"),
 		// Streaming by default; ARTEX_LLM_STREAM=false/0/off explicitly switches to
 		// non-streaming.
-		Stream: !isFalsy(os.Getenv("ARTEX_LLM_STREAM")),
+		Stream: !isFalsy(config.EnvOr("GOLIATH_LLM_STREAM", "ARTEX_LLM_STREAM")),
 	}
 	switch prov {
 	case "openai":
 		c.Format = llm.FormatOpenAI
+		c.BaseURL = normalizeOpenAICompatBaseURL(c.BaseURL)
 		c.APIKey = oaiKey
 		if c.Model == "" {
 			c.Model = "gpt-4o"
@@ -314,7 +359,7 @@ func ConfigFrom(provider, model, baseURL, apiKey, proxy string) Config {
 	case "openai":
 		c.Format = llm.FormatOpenAI
 		// provider appends "/chat/completions"; tolerate a full endpoint URL.
-		c.BaseURL = strings.TrimRight(strings.TrimSuffix(c.BaseURL, "/chat/completions"), "/")
+		c.BaseURL = normalizeOpenAICompatBaseURL(c.BaseURL)
 		if c.Model == "" {
 			c.Model = "gpt-4o"
 		}
@@ -400,6 +445,8 @@ func (c Config) NewProvider() (llm.Provider, error) {
 		if strings.TrimSpace(apiKey) == "" {
 			apiKey = ollamaPlaceholderKey
 		}
+	} else if (wireFormat == llm.FormatOpenAI || wireFormat == llm.FormatOpenAIResponses) && strings.TrimSpace(apiKey) == "" && isLocalEndpoint(baseURL) {
+		apiKey = ollamaPlaceholderKey
 	}
 	if wireFormat == FormatBedrockGateway {
 		headers, err := validateBedrockGateway(baseURL, apiKey, c.Model, c.CustomHeaders)
@@ -539,8 +586,36 @@ func (t quotaAwareTransport) RoundTrip(req *http.Request) (*http.Response, error
 	if IsQuotaExhaustedMessage(string(body)) {
 		resp.StatusCode = http.StatusPaymentRequired
 		resp.Status = "402 Payment Required"
+		return resp, nil
+	}
+	if ra := parseRetryAfter(resp.Header.Get("Retry-After")); ra > 0 {
+		if ra > 15*time.Second {
+			ra = 15 * time.Second
+		}
+		timer := time.NewTimer(ra)
+		select {
+		case <-req.Context().Done():
+			timer.Stop()
+		case <-timer.C:
+		}
 	}
 	return resp, nil
+}
+
+func parseRetryAfter(raw string) time.Duration {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+	if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+		return time.Duration(secs) * time.Second
+	}
+	if t, err := http.ParseTime(raw); err == nil {
+		if d := time.Until(t); d > 0 {
+			return d
+		}
+	}
+	return 0
 }
 
 // requestBodySnapshot copies an outgoing request body without consuming it.

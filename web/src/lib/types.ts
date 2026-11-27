@@ -1050,6 +1050,7 @@ export interface Settings {
   llm_pool_enabled?: boolean; // false by default
   // Whether agents/tasks bound to a specific profile also fall back to the pool chain on failure. Default false = binding is exclusive.
   llm_pool_bind_fallback?: boolean;
+  llm_allow_private_endpoints?: boolean;
   // Operation constraint injection scope (both on by default): splice the task's allow/deny constraints into the matching agent's system prompt.
   constraints_inject_planner?: boolean;
   constraints_inject_worker?: boolean;

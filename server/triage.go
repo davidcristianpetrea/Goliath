@@ -37,8 +37,18 @@ func (s *Server) triageClient() agent.TriageClient {
 	if client == nil {
 		return nil
 	}
-	slog.Info("[triage] initialized triage client", "profile_id", id)
-	return &agent.SystemOneClient{BaseURL: p.BaseURL, APIKey: p.APIKey, Model: p.Model, HTTP: client}
+	if strings.HasSuffix(strings.TrimRight(strings.TrimSpace(p.BaseURL), "/"), "/systemone") {
+		slog.Info("[triage] initialized SystemOne triage client", "profile_id", id)
+		return &agent.SystemOneClient{BaseURL: p.BaseURL, APIKey: p.APIKey, Model: p.Model, HTTP: client}
+	}
+	cfg := agent.ConfigFrom(p.Format, p.Model, p.BaseURL, p.APIKey, p.Proxy)
+	prov, err := cfg.NewProvider()
+	if err != nil {
+		slog.Warn("[triage] failed to build universal triage provider, dedup stays off", "profile_id", id, "err", err)
+		return nil
+	}
+	slog.Info("[triage] initialized universal chat triage client", "profile_id", id, "provider", cfg.Provider(), "model", cfg.Model)
+	return &agent.ChatTriageClient{Provider: prov, Model: cfg.Model}
 }
 
 // triageHTTPClient builds the HTTP client for the decision endpoint under the same

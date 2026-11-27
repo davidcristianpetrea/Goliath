@@ -30,6 +30,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Autumn-27/artex/agent"
+	"github.com/Autumn-27/artex/config"
 	"github.com/Autumn-27/artex/db"
 	"github.com/Autumn-27/artex/intercept"
 	"github.com/Autumn-27/artex/notify"
@@ -2484,6 +2485,23 @@ func parsePrivateModelEndpoints(raw string) map[string]bool {
 	return out
 }
 
+func isLocalModelURL(rawURL string) bool {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || u.Hostname() == "" {
+		return false
+	}
+	h := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	if h == "localhost" || strings.HasSuffix(h, ".localhost") {
+		return true
+	}
+	ip, err := netip.ParseAddr(h)
+	if err != nil {
+		return false
+	}
+	ip = ip.Unmap()
+	return ip.IsLoopback() || ip.IsPrivate()
+}
+
 func sameRedirectHost(a, b *url.URL) bool {
 	ha := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(a.Hostname())), ".")
 	hb := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(b.Hostname())), ".")
@@ -2571,15 +2589,33 @@ func (s *Server) lookupModelIPs(ctx context.Context, host string) ([]netip.Addr,
 type modelURLGuard struct {
 	s                *Server
 	privateEndpoints map[string]bool
+	allowAllPrivate  bool
 	mu               sync.Mutex
 	allowedDialAddrs map[string]bool
 }
 
 func newModelURLGuard(s *Server) *modelURLGuard {
+	raw := config.EnvOr("GOLIATH_LLM_PRIVATE_ENDPOINTS", LLMPrivateEndpointsEnv)
 	return &modelURLGuard{
 		s:                s,
-		privateEndpoints: parsePrivateModelEndpoints(os.Getenv(LLMPrivateEndpointsEnv)),
+		privateEndpoints: parsePrivateModelEndpoints(raw),
+		allowAllPrivate:  s.allowPrivateModels(),
 	}
+}
+
+func (s *Server) allowPrivateModels() bool {
+	if config.EnvBool("GOLIATH_LLM_ALLOW_PRIVATE", "ARTEX_LLM_ALLOW_PRIVATE") {
+		return true
+	}
+	if s != nil && s.m != nil && s.m.pg != nil {
+		if raw, ok, err := s.m.pg.GetSetting("llm_allow_private_endpoints"); err == nil && ok {
+			switch strings.ToLower(strings.TrimSpace(raw)) {
+			case "1", "true", "yes", "on":
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (g *modelURLGuard) allowDialAddr(addr netip.Addr, port int) {
@@ -2644,7 +2680,7 @@ func (g *modelURLGuard) validateURL(ctx context.Context, rawURL, role string) (*
 		return nil, &modelURLRefusalError{msg: fmt.Sprintf("invalid %s URL host", role)}
 	}
 	hostPort := net.JoinHostPort(normHost, strconv.Itoa(port))
-	allowPrivate := g.privateEndpoints[hostPort]
+	allowPrivate := g.allowAllPrivate || g.privateEndpoints[hostPort]
 
 	if kind == intercept.TargetIP {
 		addr, err := netip.ParseAddr(normHost)
@@ -2719,8 +2755,10 @@ func (s *Server) pgListModels(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	provider := strings.TrimSpace(req.Provider)
-	// Ollama serves its model list keyless on the local server: no key gate.
-	if apiKey == "" && provider != "ollama" {
+	// Ollama and local/LAN OpenAI-compatible servers (vLLM, LM Studio, local NIM)
+	// serve model lists without requiring an API key.
+	isLocalOpenAI := (provider == "openai" || provider == "openai-responses") && isLocalModelURL(req.BaseURL)
+	if apiKey == "" && provider != "ollama" && !isLocalOpenAI {
 		msg := "no API Key provided"
 		if withheld {
 			msg = "no API Key provided: the saved key is only sent to the endpoint it was saved for; enter the key to list models from a different base URL or provider"
@@ -2762,7 +2800,14 @@ func (s *Server) pgListModels(w http.ResponseWriter, r *http.Request) {
 			baseURL = "https://api.openai.com/v1"
 		}
 		b := strings.TrimRight(strings.TrimSuffix(strings.TrimSuffix(baseURL, "/chat/completions"), "/responses"), "/")
-		candidates = append(candidates, candidate{b + "/models", bearerHdr()})
+		if u, err := url.Parse(b); err == nil && strings.EqualFold(u.Hostname(), "integrate.api.nvidia.com") && (u.Path == "" || u.Path == "/") {
+			b += "/v1"
+		}
+		hdr := http.Header{}
+		if apiKey != "" {
+			hdr = bearerHdr()
+		}
+		candidates = append(candidates, candidate{b + "/models", hdr})
 	case "ollama":
 		// OpenAI-compatible list at {base}/v1/models. Tolerate base URLs with or
 		// without the /v1 suffix (and a full endpoint URL). No auth needed; when a
@@ -2771,6 +2816,7 @@ func (s *Server) pgListModels(w http.ResponseWriter, r *http.Request) {
 			baseURL = agent.DefaultOllamaBaseURL
 		}
 		b := strings.TrimSuffix(baseURL, "/chat/completions")
+		root := strings.TrimRight(strings.TrimSuffix(b, "/v1"), "/")
 		if !strings.HasSuffix(b, "/v1") {
 			b += "/v1"
 		}
@@ -2778,7 +2824,10 @@ func (s *Server) pgListModels(w http.ResponseWriter, r *http.Request) {
 		if apiKey != "" {
 			hdr.Set("Authorization", "Bearer "+apiKey)
 		}
-		candidates = append(candidates, candidate{b + "/models", hdr})
+		candidates = append(candidates,
+			candidate{b + "/models", hdr},
+			candidate{root + "/api/tags", hdr},
+		)
 	default: // anthropic
 		if baseURL == "" {
 			baseURL = "https://api.anthropic.com"
@@ -2912,19 +2961,31 @@ func (s *Server) pgListModels(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		// Both OpenAI and Anthropic return {"data": [{"id": "..."},...]}.
+		// Ollama /api/tags returns {"models": [{"name": "..."},...]}.
 		var parsed struct {
 			Data []struct {
 				ID string `json:"id"`
 			} `json:"data"`
+			Models []struct {
+				Name  string `json:"name"`
+				Model string `json:"model"`
+			} `json:"models"`
 		}
 		if err := json.Unmarshal(body, &parsed); err != nil {
 			lastErr = "failed to parse response: " + err.Error()
 			continue
 		}
-		models := make([]string, 0, len(parsed.Data))
+		models := make([]string, 0, len(parsed.Data)+len(parsed.Models))
 		for _, m := range parsed.Data {
 			if m.ID != "" {
 				models = append(models, m.ID)
+			}
+		}
+		for _, m := range parsed.Models {
+			if m.Name != "" {
+				models = append(models, m.Name)
+			} else if m.Model != "" {
+				models = append(models, m.Model)
 			}
 		}
 		if len(models) > 0 {

@@ -34,7 +34,7 @@ func factItemSchema() map[string]any {
 	}, "summary")
 	summary := schema["properties"].(map[string]any)["summary"].(map[string]any)
 	summary["minLength"] = 1
-	summary["pattern"] = "[^" + factWhitespace + "]"
+	summary["pattern"] = "^.*[^" + factWhitespace + "].*$"
 	schema["additionalProperties"] = false
 	return schema
 }
