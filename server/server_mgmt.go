@@ -2964,11 +2964,15 @@ func (s *Server) pgListModels(w http.ResponseWriter, r *http.Request) {
 		// Ollama /api/tags returns {"models": [{"name": "..."},...]}.
 		var parsed struct {
 			Data []struct {
-				ID string `json:"id"`
+				ID            string `json:"id"`
+				ContextLength int    `json:"context_length"`
+				MaxModelLen   int    `json:"max_model_len"`
+				ContextWindow int    `json:"context_window"`
 			} `json:"data"`
 			Models []struct {
-				Name  string `json:"name"`
-				Model string `json:"model"`
+				Name          string `json:"name"`
+				Model         string `json:"model"`
+				ContextLength int    `json:"context_length"`
 			} `json:"models"`
 		}
 		if err := json.Unmarshal(body, &parsed); err != nil {
@@ -2976,20 +2980,40 @@ func (s *Server) pgListModels(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		models := make([]string, 0, len(parsed.Data)+len(parsed.Models))
+		contextK := map[string]int{}
 		for _, m := range parsed.Data {
 			if m.ID != "" {
 				models = append(models, m.ID)
+				ctxTokens := m.ContextLength
+				if ctxTokens <= 0 {
+					ctxTokens = m.MaxModelLen
+				}
+				if ctxTokens <= 0 {
+					ctxTokens = m.ContextWindow
+				}
+				if ctxTokens >= 1000 {
+					contextK[m.ID] = ctxTokens / 1000
+				}
 			}
 		}
 		for _, m := range parsed.Models {
-			if m.Name != "" {
-				models = append(models, m.Name)
-			} else if m.Model != "" {
-				models = append(models, m.Model)
+			id := m.Name
+			if id == "" {
+				id = m.Model
+			}
+			if id != "" {
+				models = append(models, id)
+				if m.ContextLength >= 1000 {
+					contextK[id] = m.ContextLength / 1000
+				}
 			}
 		}
 		if len(models) > 0 {
-			writeJSON(w, 200, map[string]any{"ok": true, "models": models})
+			out := map[string]any{"ok": true, "models": models}
+			if len(contextK) > 0 {
+				out["model_context_k"] = contextK
+			}
+			writeJSON(w, 200, out)
 			return
 		}
 		emptyOK = true // 200 but no model ids — keep trying other candidates

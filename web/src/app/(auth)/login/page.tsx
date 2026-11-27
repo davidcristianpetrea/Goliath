@@ -164,7 +164,7 @@ export default function LoginPage() {
               <ShieldCheck className="size-5" />
             </div>
             <div className="space-y-0.5">
-              <DialogTitle className="text-base">{t("ARTEX Terms of Use and Disclaimer")}</DialogTitle>
+              <DialogTitle className="text-base">{t("Goliath Terms of Use and Disclaimer")}</DialogTitle>
               <p className="text-xs text-muted-foreground">
                 {t("Version v1.1 · Effective 2026-10-11 · Please read all the following terms in full before signing in")}
               </p>

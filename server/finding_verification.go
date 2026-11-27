@@ -10,12 +10,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/Autumn-27/artex/agent"
 	"github.com/Autumn-27/artex/db"
 	"github.com/Autumn-27/artex/evidence"
+	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/zstd"
 )
 
 // S1 receipt check. A finding is verified only when a proof/verification
@@ -59,7 +62,7 @@ func decodeEvidenceBody(respHead string, raw []byte, limit int) (out []byte, tru
 		for _, v := range strings.Split(value, ",") {
 			switch v = strings.ToLower(strings.TrimSpace(v)); v {
 			case "", "identity":
-			case "gzip", "deflate":
+			case "gzip", "deflate", "br", "zstd":
 				if coding != "" {
 					return nil, false, fmt.Errorf("unsupported content-encoding: more than one compressed layer")
 				}
@@ -73,9 +76,18 @@ func decodeEvidenceBody(respHead string, raw []byte, limit int) (out []byte, tru
 		return raw, false, nil
 	}
 	var zr io.Reader
+	var zdec *zstd.Decoder
 	switch {
 	case coding == "gzip":
 		zr, err = gzip.NewReader(bytes.NewReader(raw))
+	case coding == "br":
+		zr = brotli.NewReader(bytes.NewReader(raw))
+	case coding == "zstd":
+		zdec, err = zstd.NewReader(bytes.NewReader(raw))
+		if err == nil {
+			defer zdec.Close()
+			zr = zdec
+		}
 	case len(raw) >= 2 && raw[0]&0x0f == 8 && raw[0]>>4 <= 7 && (uint(raw[0])<<8|uint(raw[1]))%31 == 0:
 		// HTTP "deflate" is the zlib format (RFC 9110); some servers send a bare
 		// deflate stream instead, told apart by the zlib header.
@@ -143,9 +155,13 @@ func (s *Server) assessFindingVerification(ctx context.Context, findingID int64,
 		return db.VerificationNotAssessed, "binding read error: " + err.Error()
 	}
 	var proofs []db.FindingTrafficBinding
+	var baselines []db.FindingTrafficBinding
 	for _, b := range tr.Bindings {
-		if b.Role == "proof" || b.Role == "verification" {
+		switch b.Role {
+		case "proof", "verification":
 			proofs = append(proofs, b)
+		case "baseline":
+			baselines = append(baselines, b)
 		}
 	}
 	if len(proofs) == 0 {
@@ -197,22 +213,106 @@ func (s *Server) assessFindingVerification(ctx context.Context, findingID int64,
 		var fpIn agent.FPGateInput
 		fpIn.POELevel = poe
 		fpIn.Quotes = checked
-		for _, bb := range bodies {
-			if !bb.nonText && bb.text != "" {
-				fpIn.ProofBodies = append(fpIn.ProofBodies, bb.text)
+		for i, bb := range bodies {
+			if !bb.nonText {
+				fpIn.ProofBodies = append(fpIn.ProofBodies, composeFPGateMessage(proofs[i].Snapshot.RespHead, bb.text))
 			}
 		}
+		for _, base := range baselines {
+			if bBody, bErr := readBoundResponse(store, base.Snapshot); bErr == nil && !bBody.nonText {
+				fpIn.BaselineBodies = append(fpIn.BaselineBodies, composeFPGateMessage(base.Snapshot.RespHead, bBody.text))
+			}
+		}
+		var cand agent.TriageCandidate
+		cand.FindingID = findingID
 		if f, err := s.m.pg.GetFinding(findingID); err == nil && f != nil {
 			fpIn.Name = f.Name
 			fpIn.VulnClass = f.VulnClass
 			fpIn.Severity = f.Severity
 			fpIn.Summary = f.Summary
+			cand.Name = f.Name
+			cand.VulnClass = f.VulnClass
+			cand.Severity = f.Severity
+			cand.Summary = f.Summary
 		}
 		if fp := agent.AssessFalsePositiveRisk(fpIn); fp.Downgrade {
 			return db.VerificationUnverified, "FP guard: " + strings.Join(fp.Reasons, "; ")
 		}
+		if len(fpIn.ProofBodies) > 0 {
+			if reviewer, ok := s.triageClient().(fpReviewer); ok {
+				if res, rErr := reviewer.EvaluateFalsePositive(ctx, cand, fpIn.ProofBodies[0]); rErr == nil && res.LikelyFP && res.Confidence >= 0.75 {
+					reason := strings.TrimSpace(res.Reason)
+					if reason == "" {
+						reason = "flagged by triage LLM"
+					}
+					return db.VerificationUnverified, fmt.Sprintf("Triage LLM FP check (%.0f%%): %s", res.Confidence*100, reason)
+				}
+			}
+		}
 	}
 	return db.VerificationVerified, ""
+}
+
+type fpReviewer interface {
+	EvaluateFalsePositive(ctx context.Context, cand agent.TriageCandidate, proofSnippet string) (agent.FPReviewResult, error)
+}
+
+func composeFPGateMessage(respHead, body string) string {
+	head := strings.TrimSpace(respHead)
+	if head == "" {
+		return body
+	}
+	return head + "\r\n\r\n" + body
+}
+
+// reverifyFinding re-runs deterministic verification + FP checks on an existing finding.
+func (s *Server) reverifyFinding(w http.ResponseWriter, r *http.Request) {
+	pg := s.pg(w)
+	if pg == nil {
+		return
+	}
+	id, ok := pathInt(r, "id")
+	if !ok || id <= 0 {
+		writeErr(w, 400, "invalid finding id")
+		return
+	}
+	f, err := pg.GetFinding(id)
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if f == nil {
+		writeErr(w, 404, "finding not found")
+		return
+	}
+	var req struct {
+		POELevel *int     `json:"poe_level"`
+		Quotes   []string `json:"quotes"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	poe := f.PoELevel
+	if req.POELevel != nil {
+		poe = *req.POELevel
+	}
+	quotes := req.Quotes
+	if len(quotes) == 0 {
+		if q := strings.TrimSpace(f.Evidence); q != "" {
+			quotes = []string{q}
+		} else if q := strings.TrimSpace(f.Summary); q != "" {
+			quotes = []string{q}
+		}
+	}
+	status, note := s.assessFindingVerification(r.Context(), id, poe, quotes)
+	if err := pg.SetFindingVerification(id, status, poe, note); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"id":                  id,
+		"verification_status": status,
+		"verification_note":   note,
+		"poe_level":           poe,
+	})
 }
 
 func quoteInBodies(nq string, bodies []boundBody) bool {

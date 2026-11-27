@@ -13,8 +13,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Autumn-27/artex/agent"
 	"github.com/Autumn-27/artex/db"
 	"github.com/Autumn-27/artex/evidence"
+	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/zstd"
 )
 
 const (
@@ -119,14 +122,54 @@ func TestDecodeEvidenceBodyIdentityAndNoHeaderUnchanged(t *testing.T) {
 func TestDecodeEvidenceBodyUnknownEncodingFails(t *testing.T) {
 	raw := gzipBody(t, []byte(decodeHTML))
 	for _, head := range []string{
-		"HTTP 200\nContent-Encoding: br\n",
-		"HTTP 200\nContent-Encoding: gzip, br\n",
+		"HTTP 200\nContent-Encoding: lz4\n",
+		"HTTP 200\nContent-Encoding: gzip, lz4\n",
 		"HTTP 200\nContent-Encoding: gzip\nContent-Encoding: zstd\n",
 	} {
 		out, _, err := decodeEvidenceBody(head, raw, verificationReadCap)
 		if err == nil || !strings.Contains(err.Error(), "unsupported content-encoding") || out != nil {
 			t.Fatalf("head %q: out=%d bytes err=%v, want unsupported content-encoding", head, len(out), err)
 		}
+	}
+}
+
+func TestDecodeEvidenceBodyBrotliAndZstd(t *testing.T) {
+	var brBuf bytes.Buffer
+	bw := brotli.NewWriter(&brBuf)
+	_, _ = bw.Write([]byte(decodeHTML))
+	_ = bw.Close()
+
+	out, truncated, err := decodeEvidenceBody("HTTP/1.1 200 OK\r\nContent-Encoding: br\r\n", brBuf.Bytes(), verificationReadCap)
+	if err != nil || truncated || !strings.Contains(normalizeEvidenceText(string(out)), decodeQuote) {
+		t.Fatalf("brotli decode failed: out=%q truncated=%v err=%v", out, truncated, err)
+	}
+
+	var zBuf bytes.Buffer
+	zw, err := zstd.NewWriter(&zBuf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = zw.Write([]byte(decodeHTML))
+	_ = zw.Close()
+
+	out, truncated, err = decodeEvidenceBody("HTTP/1.1 200 OK\r\nContent-Encoding: zstd\r\n", zBuf.Bytes(), verificationReadCap)
+	if err != nil || truncated || !strings.Contains(normalizeEvidenceText(string(out)), decodeQuote) {
+		t.Fatalf("zstd decode failed: out=%q truncated=%v err=%v", out, truncated, err)
+	}
+}
+
+func TestComposeFPGateMessageTriggersHeaderChecks(t *testing.T) {
+	msg := composeFPGateMessage("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n", `{"q":"<script>alert(1)</script>"}`)
+	res := agent.AssessFalsePositiveRisk(agent.FPGateInput{
+		Name:        "Reflected XSS",
+		VulnClass:   "XSS",
+		Severity:    "high",
+		POELevel:    3,
+		Quotes:      []string{`<script>alert(1)</script>`},
+		ProofBodies: []string{msg},
+	})
+	if !res.Downgrade {
+		t.Fatalf("expected composeFPGateMessage to expose Content-Type header to FP guard, got %+v", res)
 	}
 }
 
@@ -228,9 +271,9 @@ func TestDecodeBoundResponseBadGzipIsAnError(t *testing.T) {
 	if bb, err := readBoundResponse(store, snap); err == nil {
 		t.Fatalf("truncated gzip: got %+v, want an error", bb)
 	}
-	store, snap = decodeSnapshot(t, "HTTP 200\nContent-Encoding: br\n", raw)
+	store, snap = decodeSnapshot(t, "HTTP 200\nContent-Encoding: lz4\n", raw)
 	if bb, err := readBoundResponse(store, snap); err == nil || !strings.Contains(err.Error(), "unsupported content-encoding") {
-		t.Fatalf("br: got %+v err=%v, want unsupported content-encoding", bb, err)
+		t.Fatalf("lz4: got %+v err=%v, want unsupported content-encoding", bb, err)
 	}
 }
 

@@ -114,18 +114,28 @@ export const VERIFICATION_META: Record<VerificationStatus, { label: string; tone
 // VerificationBadge shows the automated verification outcome ("Verified L3" when a
 // proof-of-exploitation level is declared). It renders nothing when the finding carries
 // no verification status (in-task nodes, payloads from before the column existed).
-export function VerificationBadge({ finding }: { finding: Pick<Finding, "verification_status" | "poe_level"> }) {
+export function VerificationBadge({
+  finding,
+}: {
+  finding: Pick<Finding, "verification_status" | "poe_level" | "verification_note">;
+}) {
   const meta = finding.verification_status ? VERIFICATION_META[finding.verification_status] : undefined;
   if (!meta) return null;
+  const isFPFlagged =
+    Boolean(finding.verification_note) &&
+    (finding.verification_note!.startsWith("FP guard:") || finding.verification_note!.startsWith("Triage LLM FP"));
   const label =
     finding.verification_status === "verified" && finding.poe_level
       ? `${meta.label} L${finding.poe_level}`
-      : meta.label;
+      : isFPFlagged
+        ? `${meta.label} · FP?`
+        : meta.label;
   return (
     <span
+      title={finding.verification_note || undefined}
       className={cn(
         "inline-flex w-fit items-center whitespace-nowrap rounded-md border px-2 py-0.5 font-medium text-xs",
-        toneClasses[meta.tone],
+        isFPFlagged ? toneClasses.amber : toneClasses[meta.tone],
       )}
     >
       {label}

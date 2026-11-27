@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"github.com/Autumn-27/artex/config"
 	actool "github.com/Autumn-27/norma/tool"
 )
 
@@ -169,14 +169,14 @@ func toolRAGKeep(deferred []string) map[string]bool {
 	return keep
 }
 
-// applyToolRAG is the AugmentTools hook. Off unless ARTEX_TOOL_RAG is enabled.
+// applyToolRAG is the AugmentTools hook. Off unless GOLIATH_TOOL_RAG / ARTEX_TOOL_RAG is enabled.
 func applyToolRAG(ctx context.Context, agentKey string, tools []actool.CoreTool, deferred []string, score ToolScorer) []actool.CoreTool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv(toolRAGEnv))) {
+	switch strings.ToLower(config.EnvOr("GOLIATH_TOOL_RAG", toolRAGEnv)) {
 	case "1", "true", "on", "yes":
 	default:
 		return tools
 	}
-	k, kerr := strconv.Atoi(strings.TrimSpace(os.Getenv(toolRAGTopKEnv)))
+	k, kerr := strconv.Atoi(config.EnvOr("GOLIATH_TOOL_RAG_TOPK", toolRAGTopKEnv))
 	if kerr != nil || k <= 0 {
 		k = toolRAGDefaultK
 	}

@@ -12,6 +12,7 @@ TOOLS_PROFILE="standard"
 ALLOW_PRIVATE_LLM="1"
 NON_INTERACTIVE=0
 PREBUILT_BIN=""
+FROM_RELEASE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -23,6 +24,7 @@ while [[ $# -gt 0 ]]; do
     --allow-private-llm) ALLOW_PRIVATE_LLM="1"; shift ;;
     --no-private-llm) ALLOW_PRIVATE_LLM="0"; shift ;;
     --binary) PREBUILT_BIN="${2:-}"; shift 2 ;;
+    --from-release) FROM_RELEASE=1; shift ;;
     -h|--help)
       cat <<EOF
 Goliath Native LXC / Linux Installer (No Docker)
@@ -36,6 +38,7 @@ Options:
   --allow-private-llm     Allow LAN/localhost LLM endpoints (default)
   --no-private-llm        Restrict LLM endpoints to public IPs only
   --binary <path>         Use a prebuilt goliath binary instead of compiling
+  --from-release          Download latest GitHub release binary (falls back to source build)
 EOF
       exit 0
       ;;
@@ -128,8 +131,30 @@ else
 fi
 
 # Build or install binary
+if [[ -z "$PREBUILT_BIN" && "$FROM_RELEASE" -eq 1 ]]; then
+  ARCH_RAW="$(uname -m)"
+  case "$ARCH_RAW" in
+    x86_64|amd64) RARCH="amd64" ;;
+    aarch64|arm64) RARCH="arm64" ;;
+    *) RARCH="amd64" ;;
+  esac
+  REL_URL="https://github.com/davidcristianpetrea/Goliath/releases/latest/download/goliath-linux-${RARCH}.zip"
+  info "Attempting to download release binary ($REL_URL)..."
+  REL_TMP="$(mktemp -d)"
+  if curl -fsSL "$REL_URL" -o "$REL_TMP/goliath.zip" && unzip -q -o "$REL_TMP/goliath.zip" -d "$REL_TMP/out"; then
+    FOUND_BIN="$(find "$REL_TMP/out" -type f -name goliath | head -n1 || true)"
+    if [[ -n "$FOUND_BIN" ]]; then
+      PREBUILT_BIN="$FOUND_BIN"
+      ok "Downloaded prebuilt release binary."
+    fi
+  else
+    warn "No matching release asset found yet; falling back to source build."
+  fi
+fi
+
 if [[ -n "$PREBUILT_BIN" ]]; then
   install -o root -g "$SERVICE_USER" -m 0755 "$PREBUILT_BIN" "$INSTALL_DIR/goliath"
+  rm -rf "${REL_TMP:-}" 2>/dev/null || true
 else
   # Ensure Node >= 20
   NEED_NODE=1
@@ -249,8 +274,43 @@ case "\${1:-status}" in
     sudo -u postgres pg_dump "${DB_NAME}" > "\$out"
     echo "Database backed up to \$out"
     ;;
+  trust-ca)
+    ca_file="\$(find "${INSTALL_DIR}/data" -maxdepth 3 -type f \( -name 'ca.crt' -o -name 'ca.pem' \) | head -n1 || true)"
+    if [[ -z "\$ca_file" ]]; then
+      echo "No MITM CA certificate found under ${INSTALL_DIR}/data yet (start a task with traffic capture enabled first)."
+      exit 1
+    fi
+    cp "\$ca_file" /usr/local/share/ca-certificates/goliath-mitm.crt
+    update-ca-certificates
+    echo "Installed Goliath MITM CA into system trust store."
+    ;;
+  update)
+    src="${REPO_DIR}"
+    if [[ ! -d "\$src/.git" ]]; then
+      echo "Source checkout not found at \$src"
+      exit 1
+    fi
+    cd "\$src"
+    git pull --ff-only
+    (cd web && npm ci --ignore-scripts && npm run build:static)
+    rm -rf server/webui/dist && mkdir -p server/webui && cp -r web/out server/webui/dist
+    CGO_ENABLED=0 go build -tags embedui -trimpath -o "${INSTALL_DIR}/goliath.new" ./cmd/artex
+    cp -f "${INSTALL_DIR}/goliath" "${INSTALL_DIR}/goliath.prev" 2>/dev/null || true
+    mv -f "${INSTALL_DIR}/goliath.new" "${INSTALL_DIR}/goliath"
+    chown root:"${SERVICE_USER}" "${INSTALL_DIR}/goliath"
+    chmod 0755 "${INSTALL_DIR}/goliath"
+    systemctl restart goliath
+    sleep 3
+    if ! systemctl is-active --quiet goliath; then
+      echo "Restart failed! Rolling back to previous binary..."
+      mv -f "${INSTALL_DIR}/goliath.prev" "${INSTALL_DIR}/goliath"
+      systemctl restart goliath
+      exit 1
+    fi
+    echo "Goliath updated and running."
+    ;;
   *)
-    echo "Usage: goliath-ctl {start|stop|restart|status|logs|setup-token|doctor|backup}"
+    echo "Usage: goliath-ctl {start|stop|restart|status|logs|setup-token|doctor|backup|trust-ca|update}"
     exit 1
     ;;
 esac

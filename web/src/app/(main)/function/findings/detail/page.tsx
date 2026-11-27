@@ -135,6 +135,31 @@ function FindingDetailInner() {
     [finding, id],
   );
 
+  const [reverifying, setReverifying] = React.useState(false);
+
+  const handleReverify = React.useCallback(async () => {
+    if (!finding || reverifying) return;
+    setReverifying(true);
+    try {
+      const res = await api.reverifyFinding(id);
+      setFinding((cur) =>
+        cur
+          ? {
+              ...cur,
+              verification_status: res.verification_status as Finding["verification_status"],
+              verification_note: res.verification_note,
+              poe_level: res.poe_level,
+            }
+          : cur,
+      );
+      toast.success(t("Verification updated: {status}", { status: res.verification_status }));
+    } catch (e) {
+      toast.error(t("Re-verify failed: {error}", { error: (e as Error).message }));
+    } finally {
+      setReverifying(false);
+    }
+  }, [finding, id, reverifying]);
+
   if (!finding) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
@@ -173,6 +198,15 @@ function FindingDetailInner() {
           <StatusBadge domain="finding" value={finding.status} dot />
           <ReportStateBadge state={finding.report_state} />
           <VerificationBadge finding={finding} />
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            disabled={reverifying}
+            onClick={() => void handleReverify()}
+          >
+            {reverifying ? t("Verifying…") : t("Re-verify")}
+          </Button>
           {finding.inherited && finding.source_task_id && (
             <Badge variant="outline">{t("Source task #{id} · read-only", { id: finding.source_task_id })}</Badge>
           )}
@@ -347,9 +381,27 @@ function FindingDetailInner() {
                 {/* Verification: automated outcome; the note explains any state other than verified */}
                 {finding.verification_status && (
                   <FieldRow label={t("Verification")}>
-                    <VerificationBadge finding={finding} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <VerificationBadge finding={finding} />
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        disabled={reverifying}
+                        onClick={() => void handleReverify()}
+                      >
+                        {reverifying ? t("Verifying…") : t("Re-verify")}
+                      </Button>
+                    </div>
                     {finding.verification_status !== "verified" && finding.verification_note?.trim() && (
-                      <p className="whitespace-pre-wrap break-words text-muted-foreground text-xs">
+                      <p
+                        className={
+                          finding.verification_note.startsWith("FP guard:") ||
+                          finding.verification_note.startsWith("Triage LLM FP")
+                            ? "mt-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-amber-700 text-xs dark:text-amber-300"
+                            : "whitespace-pre-wrap break-words text-muted-foreground text-xs"
+                        }
+                      >
                         {finding.verification_note}
                       </p>
                     )}

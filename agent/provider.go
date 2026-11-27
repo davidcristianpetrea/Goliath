@@ -739,7 +739,7 @@ func TestConnection(ctx context.Context, c Config) (time.Duration, string, error
 	if err != nil {
 		return 0, "", err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	// Capture the raw wire messages: what a connection test most needs to see is
 	// exactly what the gateway returned (status code + response body), which is gone

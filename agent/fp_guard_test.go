@@ -47,6 +47,9 @@ func TestAssessFalsePositiveRisk_ValidHTMLXSSPasses(t *testing.T) {
 		ProofBodies: []string{
 			"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<script>alert(document.domain)</script>",
 		},
+		BaselineBodies: []string{
+			"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\nhello world",
+		},
 	})
 	if res.Downgrade {
 		t.Fatalf("expected real HTML XSS to pass FP guard, got %+v", res)
@@ -73,7 +76,43 @@ func TestAssessFalsePositiveRisk_404ErrorPageAndHeaderInflation(t *testing.T) {
 		Severity:  "high",
 		POELevel:  3,
 	})
-	if len(resHdr.Reasons) == 0 || !strings.Contains(resHdr.Reasons[0], "High/Critical") {
-		t.Fatalf("expected header severity inflation warning, got %+v", resHdr)
+	if !resHdr.Downgrade || len(resHdr.Reasons) == 0 || !strings.Contains(resHdr.Reasons[0], "High/Critical") {
+		t.Fatalf("expected header severity inflation downgrade, got %+v", resHdr)
+	}
+}
+
+func TestAssessFalsePositiveRisk_BaselineIdenticalAndSoft404AndCORS(t *testing.T) {
+	resBase := AssessFalsePositiveRisk(FPGateInput{
+		Name:           "IDOR on /api/profile",
+		VulnClass:      "IDOR",
+		Severity:       "high",
+		POELevel:       3,
+		ProofBodies:    []string{"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"id\":1,\"role\":\"user\"}"},
+		BaselineBodies: []string{"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"id\":1,\"role\":\"user\"}"},
+	})
+	if !resBase.Downgrade {
+		t.Fatalf("expected baseline-identical proof to trigger downgrade, got %+v", resBase)
+	}
+
+	resSoft := AssessFalsePositiveRisk(FPGateInput{
+		Name:        "Exposed admin panel at /admin/.env",
+		VulnClass:   "Information Disclosure",
+		Severity:    "high",
+		POELevel:    3,
+		ProofBodies: []string{"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!doctype html><html><body><div id=\"root\"></div></body></html>"},
+	})
+	if !resSoft.Downgrade {
+		t.Fatalf("expected SPA shell soft-404 to trigger downgrade, got %+v", resSoft)
+	}
+
+	resCORS := AssessFalsePositiveRisk(FPGateInput{
+		Name:        "Permissive CORS wildcard",
+		VulnClass:   "CORS",
+		Severity:    "high",
+		POELevel:    3,
+		ProofBodies: []string{"HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\n\r\nok"},
+	})
+	if !resCORS.Downgrade {
+		t.Fatalf("expected wildcard CORS without credentials at high severity to trigger downgrade, got %+v", resCORS)
 	}
 }

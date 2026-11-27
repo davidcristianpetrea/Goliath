@@ -424,6 +424,7 @@ function ProfileSheet({
   const [testing, setTesting] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [models, setModels] = React.useState<string[]>([]);
+  const [modelContextK, setModelContextK] = React.useState<Record<string, number>>({});
   const [loadingModels, setLoadingModels] = React.useState(false);
   const [modelsOpen, setModelsOpen] = React.useState(false);
   const [modelQuery, setModelQuery] = React.useState(""); // filter text for the loaded model list; reset on open/close
@@ -465,6 +466,7 @@ function ProfileSheet({
     setApiKey("");
     setKeyHint(profile?.api_key_hint ?? "");
     setModels([]);
+    setModelContextK({});
     setModelsOpen(false);
     setModelQuery("");
   }, [open, profile]);
@@ -488,6 +490,7 @@ function ProfileSheet({
       const r = await api.fetchLLMModels(format, baseUrl, apiKey, proxy, profileId);
       if (r.ok && r.models && r.models.length > 0) {
         setModels(r.models);
+        setModelContextK(r.model_context_k ?? {});
         setModelsOpen(true);
         toast.success(t("Loaded {count} models", { count: r.models.length }));
       } else {
@@ -735,6 +738,11 @@ function ProfileSheet({
                             className="w-full shrink-0 rounded-md px-2 py-1.5 text-left font-mono text-xs hover:bg-accent hover:text-accent-foreground"
                             onClick={() => {
                               setModel(m);
+                              const det = modelContextK[m];
+                              if (det && det > 0 && (cw === "0" || !cw.trim())) {
+                                setCw(String(det));
+                                toast.info(t("Auto-detected context window: {k}K tokens", { k: det }));
+                              }
                               setModelsOpen(false);
                             }}
                           >

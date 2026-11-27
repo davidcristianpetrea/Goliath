@@ -770,6 +770,11 @@ export const api = {
     }),
   deepenFinding: (id: string, description: string) =>
     post<FindingDeepenResponse>(`/exploration/findings/${id}/deepen`, { description }),
+  reverifyFinding: (id: string) =>
+    post<{ id: number; verification_status: string; verification_note: string; poe_level: number }>(
+      `/exploration/findings/${encodeURIComponent(id)}/reverify`,
+      {},
+    ),
   intents: (task?: string) => get<TaskNode[]>(`/exploration/intents${tq(task)}`).then(arr),
   tokenStats: (task?: string) =>
     get<{ workers: TokenUsage[]; sessions: SessionTokenUsage[]; total: TokenTotal }>(
@@ -1217,13 +1222,15 @@ export const api = {
   llmRetryPolicy: () => get<LLMRetryPolicy>("/llm/retry-policy"),
   saveLLMRetryPolicy: (p: LLMRetryPolicy) => post<LLMRetryPolicy>("/llm/retry-policy", p),
   fetchLLMModels: (provider: string, base_url: string, api_key: string, proxy = "", profile_id?: number) =>
-    post<{ ok: boolean; error?: string; models?: string[] }>("/llm/models", {
+    post<{ ok: boolean; error?: string; models?: string[]; model_context_k?: Record<string, number> }>("/llm/models", {
       provider,
       base_url,
       api_key,
       proxy,
       profile_id,
     }),
+  toolsInventory: () =>
+    get<{ tools: Array<{ name: string; available: boolean; path?: string }> }>("/system/tools-inventory"),
 
   // ---- agents ----
   agents: () => get<{ agents: Agent[] }>("/agents").then((r) => arr(r.agents)),

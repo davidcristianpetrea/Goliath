@@ -10,13 +10,14 @@ import (
 // FPGateInput carries the finding metadata and bound HTTP proof context for
 // deterministic false-positive screening before marking a finding "verified".
 type FPGateInput struct {
-	Name        string
-	VulnClass   string
-	Severity    string
-	Summary     string
-	POELevel    int
-	Quotes      []string
-	ProofBodies []string // decoded response head + body strings
+	Name           string
+	VulnClass      string
+	Severity       string
+	Summary        string
+	POELevel       int
+	Quotes         []string
+	ProofBodies    []string // response head + body strings
+	BaselineBodies []string // optional baseline response head + body strings
 }
 
 // FPGateResult summarizes deterministic false-positive signals detected on a finding.
@@ -30,6 +31,8 @@ type FPGateResult struct {
 var (
 	reHTTPStatus   = regexp.MustCompile(`(?im)^HTTP/\d+(?:\.\d+)?\s+(\d{3})\b`)
 	reContentType  = regexp.MustCompile(`(?im)^Content-Type:\s*([^\r\n;]+)`)
+	reACAO         = regexp.MustCompile(`(?im)^Access-Control-Allow-Origin:\s*\*`)
+	reACAC         = regexp.MustCompile(`(?im)^Access-Control-Allow-Credentials:\s*true`)
 	reHTMLComment  = regexp.MustCompile(`(?i)&(?:lt|gt|quot|#x3c|#60);|\\u003[ce]`)
 	reRawScriptTag = regexp.MustCompile(`(?i)<script|onerror\s*=|onload\s*=|javascript:`)
 )
@@ -52,22 +55,31 @@ func AssessFalsePositiveRisk(in FPGateInput) FPGateResult {
 		strings.Contains(kind, "content-security-policy")) &&
 		!strings.Contains(kind, "bypass") && !strings.Contains(kind, "injection")
 
+	isCORS := strings.Contains(kind, "cors") && !strings.Contains(kind, "arbitrary origin") && !strings.Contains(kind, "reflected origin")
+	isDisclosureOrExposure := strings.Contains(kind, "disclosure") ||
+		strings.Contains(kind, "exposed") ||
+		strings.Contains(kind, "admin panel") ||
+		strings.Contains(kind, "sensitive file") ||
+		strings.Contains(kind, "backup file")
+
 	isInjectionOrAccess := isXSS ||
 		strings.Contains(kind, "sql injection") || strings.Contains(kind, "sqli") ||
 		strings.Contains(kind, "command injection") || strings.Contains(kind, "rce") ||
 		strings.Contains(kind, "ssrf") || strings.Contains(kind, "idor") ||
 		strings.Contains(kind, "auth bypass") || strings.Contains(kind, "authentication bypass")
 
-	// 1. Check bound HTTP proof responses for non-executable Content-Type on XSS
-	//    and 4xx/5xx error-page-only reflections.
+	// 1. Check bound HTTP proof responses for non-executable Content-Type on XSS,
+	//    4xx/5xx error-page-only reflections, soft-404/SPA shells, and wildcard CORS.
 	if len(in.ProofBodies) > 0 {
 		allNonExecXSS := isXSS
 		allErrorStatus := isInjectionOrAccess
+		allSoft404 := isInjectionOrAccess || isDisclosureOrExposure
 		sawStatus := false
 		sawCT := false
+		sawWildcardCORSNoCreds := false
 
-		for _, body := range in.ProofBodies {
-			if m := reContentType.FindStringSubmatch(body); len(m) == 2 {
+		for _, raw := range in.ProofBodies {
+			if m := reContentType.FindStringSubmatch(raw); len(m) == 2 {
 				sawCT = true
 				ct := strings.ToLower(strings.TrimSpace(m[1]))
 				if !isNonExecutableXSSContentType(ct) {
@@ -77,14 +89,24 @@ func AssessFalsePositiveRisk(in FPGateInput) FPGateResult {
 				allNonExecXSS = false
 			}
 
-			if m := reHTTPStatus.FindStringSubmatch(body); len(m) == 2 {
+			code := 0
+			if m := reHTTPStatus.FindStringSubmatch(raw); len(m) == 2 {
 				sawStatus = true
-				code, _ := strconv.Atoi(m[1])
+				code, _ = strconv.Atoi(m[1])
 				if !isBenignErrorStatus(code) {
 					allErrorStatus = false
 				}
 			} else {
 				allErrorStatus = false
+			}
+
+			bodyOnly := strings.ToLower(stripHTTPHead(raw))
+			if code != 200 || !looksLikeSoft404OrSPAShell(bodyOnly) {
+				allSoft404 = false
+			}
+
+			if isCORS && reACAO.MatchString(raw) && !reACAC.MatchString(raw) {
+				sawWildcardCORSNoCreds = true
 			}
 		}
 
@@ -96,9 +118,43 @@ func AssessFalsePositiveRisk(in FPGateInput) FPGateResult {
 			score += 45
 			reasons = append(reasons, "proof response only shows 400/403/404/405/502/503 error status")
 		}
+		if allSoft404 && sawStatus {
+			score += 45
+			reasons = append(reasons, "proof HTTP 200 response matches generic soft-404 or SPA shell")
+		}
+		if sawWildcardCORSNoCreds && (sev == "high" || sev == "critical") {
+			score += 45
+			reasons = append(reasons, "High/Critical severity claimed for wildcard CORS without credentials")
+		}
 	}
 
-	// 2. XSS quotes containing only HTML-escaped entities and no unescaped trigger.
+	// 2. Baseline-identical proof check: if baseline captures exist and every
+	//    proof body is identical to a baseline body, no behavioral delta was shown.
+	if isInjectionOrAccess && len(in.ProofBodies) > 0 && len(in.BaselineBodies) > 0 {
+		baselineSet := make(map[string]struct{}, len(in.BaselineBodies))
+		for _, b := range in.BaselineBodies {
+			norm := normalizeFPBody(stripHTTPHead(b))
+			if norm != "" {
+				baselineSet[norm] = struct{}{}
+			}
+		}
+		if len(baselineSet) > 0 {
+			allSame := true
+			for _, p := range in.ProofBodies {
+				norm := normalizeFPBody(stripHTTPHead(p))
+				if _, ok := baselineSet[norm]; !ok || norm == "" {
+					allSame = false
+					break
+				}
+			}
+			if allSame {
+				score += 50
+				reasons = append(reasons, "proof response body is identical to baseline capture")
+			}
+		}
+	}
+
+	// 3. XSS quotes containing only HTML-escaped entities and no unescaped trigger.
 	if isXSS && len(in.Quotes) > 0 {
 		allEscaped := true
 		sawEscaped := false
@@ -117,15 +173,15 @@ func AssessFalsePositiveRisk(in FPGateInput) FPGateResult {
 		}
 	}
 
-	// 3. Banner / version-only finding without L3 behavioral proof.
+	// 4. Banner / version-only finding without L3 behavioral proof.
 	if in.POELevel > 0 && in.POELevel < 3 && (strings.Contains(kind, "outdated") || strings.Contains(kind, "version disclosure") || strings.Contains(kind, "cve-")) {
 		score += 35
 		reasons = append(reasons, fmt.Sprintf("version/banner-based claim with POE L%d below L3", in.POELevel))
 	}
 
-	// 4. Over-inflated severity on missing security headers.
+	// 5. Over-inflated severity on missing security headers.
 	if isHeaderOnly && (sev == "high" || sev == "critical") {
-		score += 40
+		score += 45
 		reasons = append(reasons, "High/Critical severity assigned to missing HTTP security header")
 	}
 
@@ -140,6 +196,35 @@ func AssessFalsePositiveRisk(in FPGateInput) FPGateResult {
 		Reasons:         reasons,
 		SuggestedStatus: suggested,
 	}
+}
+
+func stripHTTPHead(raw string) string {
+	if idx := strings.Index(raw, "\r\n\r\n"); idx >= 0 {
+		return raw[idx+4:]
+	}
+	if idx := strings.Index(raw, "\n\n"); idx >= 0 {
+		return raw[idx+2:]
+	}
+	return raw
+}
+
+func normalizeFPBody(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}
+
+func looksLikeSoft404OrSPAShell(lowerBody string) bool {
+	if lowerBody == "" {
+		return false
+	}
+	if strings.Contains(lowerBody, "404 not found") ||
+		strings.Contains(lowerBody, "page not found") ||
+		strings.Contains(lowerBody, "cannot get /") {
+		return true
+	}
+	if len(lowerBody) < 1024 && (strings.Contains(lowerBody, `<div id="root"></div>`) || strings.Contains(lowerBody, `<div id="app"></div>`)) {
+		return true
+	}
+	return false
 }
 
 func isNonExecutableXSSContentType(ct string) bool {

@@ -34,8 +34,8 @@ function isFullBleed(pathname: string) {
   return normalized.startsWith("/function/tasks/");
 }
 
-const RELEASES_URL = "https://github.com/BaaRai/ARTEX/releases";
-const UPDATE_DISMISSED_KEY = "artex-update-dismissed";
+const RELEASES_URL = "https://github.com/davidcristianpetrea/Goliath/releases";
+const UPDATE_DISMISSED_KEY = "goliath-update-dismissed";
 
 export function MainContent({ children }: { children: ReactNode }) {
   const currentUser = useCurrentUser();
@@ -75,7 +75,7 @@ export function MainContent({ children }: { children: ReactNode }) {
   const updateBanner = latest ? (
     <div className="flex shrink-0 items-center justify-center gap-2 border-b bg-muted/50 px-4 py-1 text-xs">
       <a href={RELEASES_URL} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
-        {t("ARTEX {version} is available. See the release notes.", { version: latest })}
+        {t("Goliath {version} is available. See the release notes.", { version: latest })}
       </a>
       <button
         type="button"

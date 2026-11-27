@@ -130,7 +130,7 @@ export default function ChatBridgePage() {
         <h1 className="font-semibold text-xl tracking-tight">{t("Chat bot")}</h1>
         <p className="text-muted-foreground text-sm">
           {t(
-            "Talk to ARTEX from Telegram. Only the chats you allow below can use the bot; every other chat gets one refusal and is then ignored.",
+            "Talk to Goliath from Telegram. Only the chats you allow below can use the bot; every other chat gets one refusal and is then ignored.",
           )}
         </p>
       </div>
@@ -195,7 +195,7 @@ export default function ChatBridgePage() {
             />
             <p className="text-muted-foreground text-xs">
               {t(
-                "Create a bot with @BotFather and paste its token. Give ARTEX its own bot: a token used by another poller or a webhook cannot be shared.",
+                "Create a bot with @BotFather and paste its token. Give Goliath its own bot: a token used by another poller or a webhook cannot be shared.",
               )}
             </p>
           </div>
@@ -249,7 +249,7 @@ export default function ChatBridgePage() {
           </div>
           <p className="text-muted-foreground text-xs">
             {t(
-              "The bot uses long polling, so ARTEX opens no inbound port. Messages it sends contain summaries and links, never evidence bodies or credentials.",
+              "The bot uses long polling, so Goliath opens no inbound port. Messages it sends contain summaries and links, never evidence bodies or credentials.",
             )}
           </p>
         </CardContent>

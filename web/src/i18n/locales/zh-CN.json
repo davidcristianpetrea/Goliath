@@ -2762,5 +2762,19 @@
   "Allows fetching models from localhost and RFC1918 LAN hosts (Ollama, vLLM, local NVIDIA NIM). Cloud metadata IPs remain blocked.": "允许从 localhost 和 RFC1918 局域网主机（Ollama、vLLM、本地 NVIDIA NIM）获取模型列表。云元数据 IP 仍被阻止。",
   "Allow private model endpoints toggle": "允许私有模型端点开关",
   "Quick provider presets": "快速提供商预设",
-  "Goliath — Autonomous Penetration Testing Console": "Goliath — 自主渗透测试控制台"
+  "Goliath — Autonomous Penetration Testing Console": "Goliath — 自主渗透测试控制台",
+  "Goliath Terms of Use and Disclaimer": "Goliath 使用条款与免责声明",
+  "Verification updated: {status}": "验证状态已更新：{status}",
+  "Re-verify failed: {error}": "重新验证失败：{error}",
+  "Verifying…": "正在验证…",
+  "Re-verify": "重新验证",
+  "Talk to Goliath from Telegram. Only the chats you allow below can use the bot; every other chat gets one refusal and is then ignored.": "通过 Telegram 与 Goliath 对话。只有下方允许的聊天可以使用该机器人；其他聊天只会收到一次拒绝消息，之后将被忽略。",
+  "Create a bot with @BotFather and paste its token. Give Goliath its own bot: a token used by another poller or a webhook cannot be shared.": "通过 @BotFather 创建机器人并粘贴其 Token。请为 Goliath 单独使用一个机器人：已被其他轮询程序或 Webhook 使用的 Token 无法共用。",
+  "The bot uses long polling, so Goliath opens no inbound port. Messages it sends contain summaries and links, never evidence bodies or credentials.": "机器人使用长轮询，因此 Goliath 不开放入站端口。发送的消息仅包含摘要和链接，绝不包含证据正文或凭据。",
+  "Auto-detected context window: {k}K tokens": "已自动检测上下文窗口：{k}K tokens",
+  "Paces the requests Goliath itself sends to targets (WebFetch, http custom tools, the enrich probe) and sets the low-and-slow guidance in agent prompts. With traffic capture on, Bash commands that use the proxy (curl, wget, python-requests…) are paced too, by rate and jitter only: the in-flight, cache and retry limits apply to Goliath's own requests. Raw scanners such as nmap, and commands that bypass the proxy, are not paced; this is best effort, not a security boundary. This setting takes precedence over GOLIATH_NOISE_PROFILE and applies to the next request.": "控制 Goliath 自身向目标发送请求的速率，并在 Agent 提示词中设置低速扫描指引。开启流量捕获时，经过代理的 Bash 命令也会受速率和抖动控制。此设置优先于 GOLIATH_NOISE_PROFILE。",
+  "Host CLI toolbox": "宿主机 CLI 工具箱",
+  "Runtime PATH probe used by agents to pick installed tools ({ready}/{total} available)": "Agent 用于选择已安装工具的运行时 PATH 探测（{ready}/{total} 可用）",
+  "Not installed on PATH": "未在 PATH 中安装",
+  "Goliath {version} is available. See the release notes.": "Goliath {version} 已发布，查看发行说明。"
 }

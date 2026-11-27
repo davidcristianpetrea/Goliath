@@ -11,7 +11,15 @@ Goliath is designed to run natively inside a standard Debian 12/13 or Ubuntu 22.
 - **Disk**: 20–40 GB (Nuclei templates + SQLite HTTP traffic captures + task workspaces)
 - **Features**: Standard unprivileged container works; `nesting=1` is optional and not required since Goliath runs natively via `systemd`.
 
-## One-Step Install
+## Proxmox Host Provisioning (1-Command LXC Creation)
+
+Run on your **Proxmox VE host** as `root` to create an unprivileged Debian 12 LXC container and automatically install Goliath inside it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/davidcristianpetrea/Goliath/main/scripts/proxmox-create-lxc.sh | bash
+```
+
+## One-Step Install (Inside an Existing Debian/Ubuntu LXC)
 
 Inside the LXC container as `root`:
 
@@ -21,7 +29,7 @@ cd /opt/goliath-src
 bash scripts/lxc-install.sh
 ```
 
-Or non-interactively:
+Or non-interactively (add `--from-release` to pull a prebuilt GitHub Release binary when available):
 
 ```bash
 bash scripts/lxc-install.sh --non-interactive --tools standard --allow-private-llm
@@ -42,6 +50,8 @@ goliath-ctl logs         # Follow live logs
 goliath-ctl setup-token  # Print the initial /setup token
 goliath-ctl doctor       # Verify PostgreSQL + installed pentest binaries
 goliath-ctl backup       # Dump PostgreSQL database to /root/
+goliath-ctl trust-ca     # Trust Goliath MITM CA in system certificates
+goliath-ctl update       # Pull latest main, rebuild with rollback safety, restart
 goliath-ctl restart      # Restart Goliath
 ```
 

@@ -1,4 +1,5 @@
 import { t } from "@/i18n";
+import { cleanScopeLine } from "./company-scope-clean";
 import type { CompanyScopeKind, CompanyScopeRule } from "@/lib/types";
 
 export const MAX_COMPANY_SCOPE_VALUE_LENGTH = 1024;
@@ -181,8 +182,8 @@ export function parseCompanyScopeText(
 ): ParsedCompanyScopeText {
   const nonEmpty = value
     .split(/\r?\n/)
-    .map((raw, index) => ({ raw, line: index + 1 }))
-    .filter(({ raw }) => raw.trim());
+    .map((raw, index) => ({ raw: cleanScopeLine(raw), line: index + 1 }))
+    .filter(({ raw }) => raw.length > 0);
   const preserved = new Map<string, CompanyScopeRule[]>();
   for (const rule of options.preservedRules ?? []) {
     const key = rule.value.trim();
@@ -194,8 +195,17 @@ export function parseCompanyScopeText(
     const preservedRule = queue?.shift();
     return classifyCompanyScopeLine(raw, line, preservedRule);
   });
+  const seen = new Set<string>();
+  const rules: CompanyScopeRule[] = [];
+  for (const item of issues) {
+    if (!item.rule) continue;
+    const normKey = `${item.rule.kind}:${normalizeCompanyScopeValue(item.rule)}`;
+    if (seen.has(normKey)) continue;
+    seen.add(normKey);
+    rules.push(item.rule);
+  }
   return {
-    rules: issues.flatMap((item) => (item.rule ? [item.rule] : [])),
+    rules,
     errors: issues.flatMap((item) => (item.error ? [{ line: item.line, error: item.error }] : [])),
   };
 }

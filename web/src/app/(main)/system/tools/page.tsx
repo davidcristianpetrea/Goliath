@@ -380,9 +380,11 @@ export default function ToolsPage() {
   const [captureOn, setCaptureOn] = React.useState(false);
   const [selectedKey, setSelectedKey] = React.useState<string | null>(null);
   const [customEdit, setCustomEdit] = React.useState<Tool | "new" | null>(null);
+  const [cliTools, setCliTools] = React.useState<Array<{ name: string; available: boolean; path?: string }>>([]);
 
   const reload = React.useCallback(() => {
     api.tools().then(setTools).catch(() => setTools([]));
+    api.toolsInventory().then((r) => setCliTools(r.tools ?? [])).catch(() => setCliTools([]));
   }, []);
   React.useEffect(() => {
     reload();
@@ -426,6 +428,43 @@ export default function ToolsPage() {
           />
         </div>
       </div>
+
+      {cliTools.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-sm">{t("Host CLI toolbox")}</CardTitle>
+                <CardDescription className="text-xs">
+                  {t("Runtime PATH probe used by agents to pick installed tools ({ready}/{total} available)", {
+                    ready: cliTools.filter((x) => x.available).length,
+                    total: cliTools.length,
+                  })}
+                </CardDescription>
+              </div>
+              <Button size="xs" variant="outline" onClick={reload}>
+                <RotateCcwIcon /> {t("Refresh")}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-1.5 pt-0">
+            {cliTools.map((ct) => (
+              <Badge
+                key={ct.name}
+                variant={ct.available ? "secondary" : "outline"}
+                title={ct.path || t("Not installed on PATH")}
+                className={
+                  ct.available
+                    ? "border-emerald-500/30 bg-emerald-500/10 font-mono text-emerald-700 dark:text-emerald-300"
+                    : "font-mono text-muted-foreground opacity-60"
+                }
+              >
+                {ct.name}
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="system">
         <TabsList>

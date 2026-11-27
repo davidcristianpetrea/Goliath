@@ -1,8 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 72" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 72" fill="none">
   <style>
     .g-ink { fill: #101012; }
     @media (prefers-color-scheme: dark) { .g-ink { fill: #F5F5F7; } }
   </style>
   <path class="g-ink" d="M12 24.5L36 10.6C36.7 10.2 37.5 10.2 38.2 10.6L59 22.6C59.6 23 60 23.6 60 24.3V32.4C60 33.2 59.1 33.7 58.4 33.3L37.1 21L23 29.1V42.9L37.1 51L49 44.1V39.5H38.5C37.7 39.5 37 38.8 37 38V31.5C37 30.7 37.7 30 38.5 30H58.5C59.3 30 60 30.7 60 31.5V47.7C60 48.4 59.6 49 59 49.4L38.2 61.4C37.5 61.8 36.7 61.8 36 61.4L12 47.5C11.4 47.1 11 46.5 11 45.8V26.2C11 25.5 11.4 24.9 12 24.5Z"/>
-  <text x="82" y="45" class="g-ink" font-family="Sora, Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="30" font-weight="600" letter-spacing="0.22em">GOLIATH</text>
+  <g class="g-ink" transform="translate(84, 21)">
+    <path d="M0 0H30V5H6V25H24V17H15V12H30V30H0V0Z"/>
+    <path fill-rule="evenodd" d="M40 0H70V30H40V0ZM46 5V25H64V5H46Z"/>
+    <path d="M82 0H88V25H104V30H82V0Z"/>
+    <path d="M115 0H121V30H115V0Z"/>
+    <path d="M145 0H152L165 30H158.5L155.5 23H141.5L138.5 30H132L145 0ZM148.5 6.8L143.5 18.2H153.5L148.5 6.8Z"/>
+    <path d="M172 0H198V5H188V30H182V5H172V0Z"/>
+    <path d="M209 0H215V12H231V0H237V30H231V17H215V30H209V0Z"/>
+  </g>
 </svg>

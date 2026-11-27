@@ -891,6 +891,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/exploration/findings/{id}/retests", s.listFindingRetests)
 	mux.HandleFunc("GET /api/exploration/findings/retests/active", s.listActiveFindingRetests)
 	mux.HandleFunc("POST /api/exploration/findings/{id}/retests", s.startFindingRetest)
+	mux.HandleFunc("POST /api/exploration/findings/{id}/reverify", s.reverifyFinding)
 	mux.HandleFunc("PATCH /api/exploration/findings/{id}", s.patchFinding)
 	mux.HandleFunc("POST /api/exploration/findings/bulk-status", s.bulkPatchFindingStatus)
 	mux.HandleFunc("POST /api/exploration/findings/bulk-report-state", s.bulkPatchFindingReportState)

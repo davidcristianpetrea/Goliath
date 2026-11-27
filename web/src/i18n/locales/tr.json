@@ -2762,5 +2762,19 @@
   "Allows fetching models from localhost and RFC1918 LAN hosts (Ollama, vLLM, local NVIDIA NIM). Cloud metadata IPs remain blocked.": "localhost ve RFC1918 LAN ana bilgisayarlarından (Ollama, vLLM, yerel NVIDIA NIM) model çekilmesine izin verir. Bulut meta veri IP'leri engellenmeye devam eder.",
   "Allow private model endpoints toggle": "Özel model uç noktalarına izin ver anahtarı",
   "Quick provider presets": "Hızlı sağlayıcı ön ayarları",
-  "Goliath — Autonomous Penetration Testing Console": "Goliath — Otonom Sızma Testi Konsolu"
+  "Goliath — Autonomous Penetration Testing Console": "Goliath — Otonom Sızma Testi Konsolu",
+  "Goliath Terms of Use and Disclaimer": "Goliath Kullanım Koşulları ve Sorumluluk Reddi",
+  "Verification updated: {status}": "Doğrulama güncellendi: {status}",
+  "Re-verify failed: {error}": "Yeniden doğrulama başarısız: {error}",
+  "Verifying…": "Doğrulanıyor…",
+  "Re-verify": "Yeniden doğrula",
+  "Talk to Goliath from Telegram. Only the chats you allow below can use the bot; every other chat gets one refusal and is then ignored.": "Telegram üzerinden Goliath ile konuşun. Yalnızca aşağıda izin verdiğiniz sohbetler botu kullanabilir; diğer tüm sohbetlere bir kez ret yanıtı verilir ve ardından yoksayılır.",
+  "Create a bot with @BotFather and paste its token. Give Goliath its own bot: a token used by another poller or a webhook cannot be shared.": "@BotFather ile bir bot oluşturun ve belirtecini yapıştırın. Goliath'a kendi botunu verin: başka bir yoklayıcı veya webhook tarafından kullanılan belirteç paylaşılamaz.",
+  "The bot uses long polling, so Goliath opens no inbound port. Messages it sends contain summaries and links, never evidence bodies or credentials.": "Bot uzun yoklama (long polling) kullanır, bu nedenle Goliath gelen bağlantı noktası açmaz. Gönderdiği mesajlar özetler ve bağlantılar içerir; kanıt gövdeleri veya kimlik bilgileri içermez.",
+  "Auto-detected context window: {k}K tokens": "Otomatik algılanan bağlam penceresi: {k}K belirteç",
+  "Paces the requests Goliath itself sends to targets (WebFetch, http custom tools, the enrich probe) and sets the low-and-slow guidance in agent prompts. With traffic capture on, Bash commands that use the proxy (curl, wget, python-requests…) are paced too, by rate and jitter only: the in-flight, cache and retry limits apply to Goliath's own requests. Raw scanners such as nmap, and commands that bypass the proxy, are not paced; this is best effort, not a security boundary. This setting takes precedence over GOLIATH_NOISE_PROFILE and applies to the next request.": "Goliath'ın hedeflere gönderdiği istekleri hızlandırır/sınırlar ve ajan istemlerindeki düşük-ve-yavaş yönergesini ayarlar. Trafik yakalama açıkken proxy kullanan Bash komutları da hız ve titreme ile sınırlandırılır. Bu ayar GOLIATH_NOISE_PROFILE değişkenine göre önceliklidir.",
+  "Host CLI toolbox": "Ana bilgisayar CLI araç kutusu",
+  "Runtime PATH probe used by agents to pick installed tools ({ready}/{total} available)": "Ajanların kurulu araçları seçmek için kullandığı çalışma zamanı PATH yoklaması ({ready}/{total} mevcut)",
+  "Not installed on PATH": "PATH üzerinde kurulu değil",
+  "Goliath {version} is available. See the release notes.": "Goliath {version} sürümü mevcut. Sürüm notlarına bakın."
 }
