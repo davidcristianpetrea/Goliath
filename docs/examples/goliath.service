@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=goliath
-Group=goliath
+User=root
+Group=root
 WorkingDirectory=/opt/goliath
 ExecStart=/opt/goliath/goliath
 Restart=on-failure
@@ -22,10 +22,9 @@ Environment=GOLIATH_LLM_ALLOW_PRIVATE=1
 Environment=NUCLEI_TEMPLATES_DIR=/opt/nuclei-templates
 Environment=DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD=true
 
-# LXC-compatible hardening (safe for unprivileged Proxmox LXC containers)
+# LXC-compatible hardening (runs as root so agent processes drop to UID/GID 10001; omits PrivateTmp for unprivileged LXC compatibility)
 NoNewPrivileges=yes
-PrivateTmp=yes
-UMask=0027
+UMask=0022
 
 [Install]
 WantedBy=multi-user.target

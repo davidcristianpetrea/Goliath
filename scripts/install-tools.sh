@@ -86,7 +86,10 @@ DALFOX_VERSION="3.2.4"
 DALFOX_SHA256_AMD64="c11cfd2f8261973f0a2a2a1eba5a147ce77712a29acfa6343f9847fb8bb7eca2"
 DALFOX_SHA256_ARM64="fd56b0b7da2d06868cd73b504f41d21314629feffcd5bdc97718db1c9dd2fa70"
 
-SQLMAP_COMMIT="cceda39208b5aa4f7f0fd36559a9114cb9e3281d"
+SQLMAP_VERSION="1.9.9"
+SQLMAP_COMMIT="cceda39208b5aad478de2c3f731df4239d9881f6"
+NUCLEI_TEMPLATES_VERSION="v10.5.1"
+NUCLEI_TEMPLATES_COMMIT="79fb682760ab3d5b0e22afbb44709353cbebf023"
 
 install_zip_bin() {
   local name="$1" url="$2" sha="$3" bin_name="${4:-$1}"
@@ -145,6 +148,7 @@ install_tar_bin() {
 }
 
 if [[ "$ARCH" == "amd64" ]]; then
+  DALFOX_ARCH="x86_64"
   NUCLEI_SHA="$NUCLEI_SHA256_AMD64"
   HTTPX_SHA="$HTTPX_SHA256_AMD64"
   SUBFINDER_SHA="$SUBFINDER_SHA256_AMD64"
@@ -152,6 +156,7 @@ if [[ "$ARCH" == "amd64" ]]; then
   FFUF_SHA="$FFUF_SHA256_AMD64"
   DALFOX_SHA="$DALFOX_SHA256_AMD64"
 else
+  DALFOX_ARCH="aarch64"
   NUCLEI_SHA="$NUCLEI_SHA256_ARM64"
   HTTPX_SHA="$HTTPX_SHA256_ARM64"
   SUBFINDER_SHA="$SUBFINDER_SHA256_ARM64"
@@ -165,22 +170,38 @@ install_zip_bin "httpx"     "https://github.com/projectdiscovery/httpx/releases/
 install_zip_bin "subfinder" "https://github.com/projectdiscovery/subfinder/releases/download/v${SUBFINDER_VERSION}/subfinder_${SUBFINDER_VERSION}_linux_${ARCH}.zip" "$SUBFINDER_SHA" "subfinder" || true
 install_zip_bin "katana"    "https://github.com/projectdiscovery/katana/releases/download/v${KATANA_VERSION}/katana_${KATANA_VERSION}_linux_${ARCH}.zip"       "$KATANA_SHA"    "katana" || true
 install_tar_bin "ffuf"      "https://github.com/ffuf/ffuf/releases/download/v${FFUF_VERSION}/ffuf_${FFUF_VERSION}_linux_${ARCH}.tar.gz"                        "$FFUF_SHA"      "ffuf" || true
-install_tar_bin "dalfox"    "https://github.com/hahwul/dalfox/releases/download/v${DALFOX_VERSION}/dalfox_linux_${ARCH}.tar.gz"                               "$DALFOX_SHA"    "dalfox" || true
+install_tar_bin "dalfox"    "https://github.com/hahwul/dalfox/releases/download/v${DALFOX_VERSION}/dalfox-v${DALFOX_VERSION}-linux-${DALFOX_ARCH}-musl.tar.gz" "$DALFOX_SHA"    "dalfox" || true
 
 if [[ ! -d /opt/sqlmap ]]; then
-  info "Installing pinned sqlmap..."
-  git clone --depth 1 https://github.com/sqlmapproject/sqlmap.git /opt/sqlmap
-  (cd /opt/sqlmap && git fetch --depth 1 origin "$SQLMAP_COMMIT" && git checkout "$SQLMAP_COMMIT" 2>/dev/null || true)
-  ln -sf /opt/sqlmap/sqlmap.py /usr/local/bin/sqlmap
-  chmod +x /opt/sqlmap/sqlmap.py
-  ok "Installed sqlmap"
+  info "Installing pinned sqlmap (${SQLMAP_VERSION})..."
+  if git clone --quiet --depth 1 --branch "$SQLMAP_VERSION" https://github.com/sqlmapproject/sqlmap /opt/sqlmap; then
+    sqlmap_got="$(git -C /opt/sqlmap rev-parse HEAD || true)"
+    if [[ "$sqlmap_got" != "$SQLMAP_COMMIT" ]]; then
+      warn "sqlmap commit mismatch (want $SQLMAP_COMMIT, got $sqlmap_got)"
+    fi
+    rm -rf /opt/sqlmap/.git
+    chmod +x /opt/sqlmap/sqlmap.py
+    ln -sf /opt/sqlmap/sqlmap.py /usr/local/bin/sqlmap
+    ok "Installed sqlmap"
+  else
+    warn "Failed to clone sqlmap"
+  fi
 fi
 
-if command -v nuclei >/dev/null 2>&1; then
-  mkdir -p /opt/nuclei-templates
-  info "Updating nuclei templates into /opt/nuclei-templates..."
-  NUCLEI_TEMPLATES_DIR=/opt/nuclei-templates nuclei -ut -ud /opt/nuclei-templates -silent || true
-  chmod -R a+rX /opt/nuclei-templates || true
+if ! find /opt/nuclei-templates -maxdepth 2 -name '*.yaml' 2>/dev/null | grep -q .; then
+  info "Installing pinned nuclei templates (${NUCLEI_TEMPLATES_VERSION}) into /opt/nuclei-templates..."
+  rm -rf /opt/nuclei-templates
+  if git clone --quiet --depth 1 --branch "$NUCLEI_TEMPLATES_VERSION" https://github.com/projectdiscovery/nuclei-templates /opt/nuclei-templates; then
+    nt_got="$(git -C /opt/nuclei-templates rev-parse HEAD || true)"
+    if [[ "$nt_got" != "$NUCLEI_TEMPLATES_COMMIT" ]]; then
+      warn "nuclei-templates commit mismatch (want $NUCLEI_TEMPLATES_COMMIT, got $nt_got)"
+    fi
+    rm -rf /opt/nuclei-templates/.git
+    chmod -R a+rX /opt/nuclei-templates || true
+    ok "Installed nuclei-templates"
+  else
+    warn "Failed to clone nuclei-templates"
+  fi
 fi
 
 if [[ "$PROFILE" == "full" ]]; then

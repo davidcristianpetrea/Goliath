@@ -101,14 +101,18 @@ if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_N
   ok "Created PostgreSQL database '${DB_NAME}'"
 fi
 
-if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
-  useradd --system --user-group --home-dir "$INSTALL_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
-  ok "Created system user '$SERVICE_USER'"
-fi
+install -d -o root -g root -m 0755 "$INSTALL_DIR"
+install -d -o root -g root -m 0755 "$INSTALL_DIR/data"
+install -d -o root -g root -m 0700 "$INSTALL_DIR/keys"
+install -d -o root -g root -m 0755 "$INSTALL_DIR/skills"
 
-install -d -o root -g "$SERVICE_USER" -m 0755 "$INSTALL_DIR"
-install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0770 "$INSTALL_DIR/data"
-install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0700 "$INSTALL_DIR/keys"
+if [[ -d "$REPO_DIR/skills" ]]; then
+  cp -rn "$REPO_DIR/skills/." "$INSTALL_DIR/skills/"
+  chown -R root:root "$INSTALL_DIR/skills"
+  find "$INSTALL_DIR/skills" -type d -exec chmod 0755 {} +
+  find "$INSTALL_DIR/skills" -type f -exec chmod 0644 {} +
+  ok "Installed built-in skills to $INSTALL_DIR/skills"
+fi
 
 if [[ ! -f "$INSTALL_DIR/config.json" ]]; then
   cat > "$INSTALL_DIR/config.json" <<JSON
@@ -123,10 +127,12 @@ if [[ ! -f "$INSTALL_DIR/config.json" ]]; then
   }
 }
 JSON
-  chown "${SERVICE_USER}:${SERVICE_USER}" "$INSTALL_DIR/config.json"
+  chown root:root "$INSTALL_DIR/config.json"
   chmod 0600 "$INSTALL_DIR/config.json"
   ok "Generated $INSTALL_DIR/config.json"
 else
+  chown root:root "$INSTALL_DIR/config.json"
+  chmod 0600 "$INSTALL_DIR/config.json"
   info "Preserving existing $INSTALL_DIR/config.json"
 fi
 
@@ -153,7 +159,7 @@ if [[ -z "$PREBUILT_BIN" && "$FROM_RELEASE" -eq 1 ]]; then
 fi
 
 if [[ -n "$PREBUILT_BIN" ]]; then
-  install -o root -g "$SERVICE_USER" -m 0755 "$PREBUILT_BIN" "$INSTALL_DIR/goliath"
+  install -o root -g root -m 0755 "$PREBUILT_BIN" "$INSTALL_DIR/goliath"
   rm -rf "${REL_TMP:-}" 2>/dev/null || true
 else
   # Ensure Node >= 20
@@ -203,7 +209,7 @@ else
   rm -rf server/webui/dist && mkdir -p server/webui && cp -r web/out server/webui/dist
   CGO_ENABLED=0 go build -tags embedui -trimpath -o "$INSTALL_DIR/goliath.new" ./cmd/artex
   mv -f "$INSTALL_DIR/goliath.new" "$INSTALL_DIR/goliath"
-  chown root:"$SERVICE_USER" "$INSTALL_DIR/goliath"
+  chown root:root "$INSTALL_DIR/goliath"
   chmod 0755 "$INSTALL_DIR/goliath"
   ok "Built and installed $INSTALL_DIR/goliath"
 fi
@@ -211,7 +217,7 @@ fi
 # Install pentest tools
 bash "$REPO_DIR/scripts/install-tools.sh" --profile "$TOOLS_PROFILE"
 
-# Install LXC-safe systemd unit
+# Install LXC-safe systemd unit (runs as root so executor processes drop cleanly to UID/GID 10001)
 cat > /etc/systemd/system/goliath.service <<UNIT
 [Unit]
 Description=Goliath Autonomous Penetration Testing Platform
@@ -220,8 +226,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=${SERVICE_USER}
-Group=${SERVICE_USER}
+User=root
+Group=root
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=${INSTALL_DIR}/goliath
 Restart=on-failure
@@ -237,10 +243,9 @@ Environment=GOLIATH_LLM_ALLOW_PRIVATE=${ALLOW_PRIVATE_LLM}
 Environment=NUCLEI_TEMPLATES_DIR=/opt/nuclei-templates
 Environment=DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD=true
 
-# LXC-compatible hardening (avoids PrivateNetwork/ProtectKernelTunables that break unprivileged LXCs)
+# LXC-compatible hardening (omits PrivateTmp which fails in unprivileged LXCs without nesting)
 NoNewPrivileges=yes
-PrivateTmp=yes
-UMask=0027
+UMask=0022
 
 [Install]
 WantedBy=multi-user.target
@@ -297,8 +302,15 @@ case "\${1:-status}" in
     CGO_ENABLED=0 go build -tags embedui -trimpath -o "${INSTALL_DIR}/goliath.new" ./cmd/artex
     cp -f "${INSTALL_DIR}/goliath" "${INSTALL_DIR}/goliath.prev" 2>/dev/null || true
     mv -f "${INSTALL_DIR}/goliath.new" "${INSTALL_DIR}/goliath"
-    chown root:"${SERVICE_USER}" "${INSTALL_DIR}/goliath"
+    chown root:root "${INSTALL_DIR}/goliath"
     chmod 0755 "${INSTALL_DIR}/goliath"
+    if [[ -d "\$src/skills" ]]; then
+      mkdir -p "${INSTALL_DIR}/skills"
+      cp -rn "\$src/skills/." "${INSTALL_DIR}/skills/"
+      chown -R root:root "${INSTALL_DIR}/skills"
+      find "${INSTALL_DIR}/skills" -type d -exec chmod 0755 {} +
+      find "${INSTALL_DIR}/skills" -type f -exec chmod 0644 {} +
+    fi
     systemctl restart goliath
     sleep 3
     if ! systemctl is-active --quiet goliath; then
