@@ -11,7 +11,7 @@ import (
 
 // TestPoolProfilesOrder pins the failover chain query: keyless profiles can't
 // serve a request and excluded ones aren't fallback targets, so neither belongs
-// in the chain; the rest come back by priority, highest first.
+// in the chain; the rest come back by lowest priority number first (0 = highest).
 // Deliberately does NOT touch is_default — flipping the active profile would be a
 // side effect on the shared dev database.
 func TestPoolProfilesOrder(t *testing.T) {
@@ -37,10 +37,10 @@ func TestPoolProfilesOrder(t *testing.T) {
 		t.Cleanup(func() { deleteTestProfile(t, d, id) })
 		return id
 	}
-	lo := mk("t-pool-lo", 1, false, "k1")
-	hi := mk("t-pool-hi", 9, false, "k2")
-	mk("t-pool-excluded", 99, true, "k3") // excluded despite the top priority
-	mk("t-pool-nokey", 50, false, "")     // no key → cannot serve anything
+	lo := mk("t-pool-lo", 5, false, "k1")
+	hi := mk("t-pool-hi", 0, false, "k2")
+	mk("t-pool-excluded", 0, true, "k3") // excluded despite the top priority
+	mk("t-pool-nokey", 0, false, "")     // no key → cannot serve anything
 
 	chain, err := d.PoolProfiles()
 	if err != nil {
