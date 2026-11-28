@@ -240,7 +240,7 @@ func (s *Server) assessFindingVerification(ctx context.Context, findingID int64,
 		}
 		if len(fpIn.ProofBodies) > 0 {
 			if reviewer, ok := s.triageClient().(fpReviewer); ok {
-				if res, rErr := reviewer.EvaluateFalsePositive(ctx, cand, fpIn.ProofBodies[0]); rErr == nil && res.LikelyFP && res.Confidence >= 0.75 {
+				if res, rErr := reviewer.EvaluateFalsePositive(ctx, cand, strings.Join(fpIn.ProofBodies, "\n---\n")); rErr == nil && res.LikelyFP && res.Confidence >= 0.75 {
 					reason := strings.TrimSpace(res.Reason)
 					if reason == "" {
 						reason = "flagged by triage LLM"

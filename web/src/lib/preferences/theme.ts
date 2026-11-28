@@ -53,6 +53,14 @@ export const THEME_PRESET_OPTIONS = [
       dark: "oklch(0.64 0.17 36.44)",
     },
   },
+  {
+    label: "Goliath",
+    value: "goliath",
+    primary: {
+      light: "#0d7377",
+      dark: "#38d9d4",
+    },
+  },
 ] as const;
 
 export const THEME_PRESET_VALUES = THEME_PRESET_OPTIONS.map((p) => p.value);

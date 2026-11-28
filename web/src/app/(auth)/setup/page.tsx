@@ -64,13 +64,13 @@ export default function SetupPage() {
 
   return (
     <div className="flex h-dvh">
-      {/* Left panel */}
-      <div className="hidden flex-col items-center justify-center border-r border-white/10 bg-[#09090b] p-12 text-center text-[#f5f5f7] lg:flex lg:w-1/3">
+      {/* Left panel — always dark regardless of theme mode */}
+      <div className="hidden flex-col items-center justify-center border-r border-white/10 bg-zinc-950 p-12 text-center text-zinc-50 lg:flex lg:w-1/3">
         <div className="relative flex flex-col items-center justify-center gap-6">
-          <div className="absolute size-80 rounded-full border border-white/5" />
-          <div className="absolute size-60 rounded-full border border-white/10" />
-          <div className="absolute size-40 rounded-full border border-white/15" />
-          <GoliathLogo variant="full" className="relative scale-125 text-[#f5f5f7]" />
+          <div className="absolute size-80 rounded-full border border-primary/5 dark:border-primary/10" />
+          <div className="absolute size-60 rounded-full border border-primary/10 dark:border-primary/20" />
+          <div className="absolute size-40 rounded-full border border-primary/15 dark:border-primary/30" />
+          <GoliathLogo variant="full" className="relative scale-125 text-zinc-50" />
         </div>
       </div>
 
@@ -131,7 +131,7 @@ export default function SetupPage() {
                   autoComplete="new-password"
                 />
               </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
               <Button
                 type="submit"
                 className="w-full"

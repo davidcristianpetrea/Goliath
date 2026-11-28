@@ -35,6 +35,8 @@ var (
 	reACAC         = regexp.MustCompile(`(?im)^Access-Control-Allow-Credentials:\s*true`)
 	reHTMLComment  = regexp.MustCompile(`(?i)&(?:lt|gt|quot|#x3c|#60);|\\u003[ce]`)
 	reRawScriptTag = regexp.MustCompile(`(?i)<script|onerror\s*=|onload\s*=|javascript:`)
+	reCSPHeader    = regexp.MustCompile(`(?im)^Content-Security-Policy:`)
+	reXFOHeader    = regexp.MustCompile(`(?im)^X-Frame-Options:\s*(DENY|SAMEORIGIN)`)
 )
 
 // AssessFalsePositiveRisk applies deterministic heuristics to catch common
@@ -185,6 +187,59 @@ func AssessFalsePositiveRisk(in FPGateInput) FPGateResult {
 		reasons = append(reasons, "High/Critical severity assigned to missing HTTP security header")
 	}
 
+	// 6. XSS claimed but response has strong CSP and X-Frame-Options.
+	if isXSS && len(in.ProofBodies) > 0 {
+		allCSP := true
+		for _, raw := range in.ProofBodies {
+			if !reCSPHeader.MatchString(raw) {
+				allCSP = false
+				break
+			}
+		}
+		if allCSP {
+			score += 20
+			reasons = append(reasons, "XSS claimed but all responses have Content-Security-Policy")
+		}
+	}
+
+	// 7. SSRF / Open Redirect with only 3xx status and no sensitive data.
+	isOpenRedirect := strings.Contains(kind, "open redirect") || strings.Contains(kind, "url redirect")
+	isSSRF := strings.Contains(kind, "ssrf") || strings.Contains(kind, "server-side request forgery")
+	if (isOpenRedirect || isSSRF) && len(in.ProofBodies) > 0 {
+		allRedirect := true
+		for _, raw := range in.ProofBodies {
+			if m := reHTTPStatus.FindStringSubmatch(raw); len(m) == 2 {
+				code, _ := strconv.Atoi(m[1])
+				if code < 300 || code >= 400 {
+					allRedirect = false
+					break
+				}
+			} else {
+				allRedirect = false
+				break
+			}
+		}
+		if allRedirect && (sev == "high" || sev == "critical") {
+			score += 35
+			reasons = append(reasons, "SSRF/redirect with only 3xx responses rated High/Critical")
+		}
+	}
+
+	// 8. Generic "information disclosure" at high severity without sensitive data indicators.
+	if isDisclosureOrExposure && (sev == "high" || sev == "critical") && !strings.Contains(kind, "credential") &&
+		!strings.Contains(kind, "password") && !strings.Contains(kind, "token") && !strings.Contains(kind, "api key") &&
+		!strings.Contains(kind, "secret") && !strings.Contains(kind, "pii") && !strings.Contains(kind, "ssn") {
+		score += 30
+		reasons = append(reasons, "generic info-disclosure/exposure at High/Critical without sensitive data indicators")
+	}
+
+	// 9. Rate-limiting / brute-force findings are low-impact by default.
+	isRateLimit := strings.Contains(kind, "rate limit") || strings.Contains(kind, "brute force") || strings.Contains(kind, "bruteforce")
+	if isRateLimit && (sev == "high" || sev == "critical") {
+		score += 40
+		reasons = append(reasons, "rate-limiting/brute-force finding at High/Critical severity")
+	}
+
 	downgrade := score >= 45
 	suggested := ""
 	if downgrade {
@@ -218,10 +273,16 @@ func looksLikeSoft404OrSPAShell(lowerBody string) bool {
 	}
 	if strings.Contains(lowerBody, "404 not found") ||
 		strings.Contains(lowerBody, "page not found") ||
-		strings.Contains(lowerBody, "cannot get /") {
+		strings.Contains(lowerBody, "cannot get /") ||
+		strings.Contains(lowerBody, "not found") && strings.Contains(lowerBody, "error") {
 		return true
 	}
-	if len(lowerBody) < 1024 && (strings.Contains(lowerBody, `<div id="root"></div>`) || strings.Contains(lowerBody, `<div id="app"></div>`)) {
+	if len(lowerBody) < 2048 && (strings.Contains(lowerBody, `<div id="root"></div>`) ||
+		strings.Contains(lowerBody, `<div id="app"></div>`) ||
+		strings.Contains(lowerBody, `<div id="__next"></div>`) ||
+		strings.Contains(lowerBody, `<div id="__nuxt"></div>`) ||
+		strings.Contains(lowerBody, `<div id="__app"></div>`) ||
+		strings.Contains(lowerBody, `<main id="app"></main>`)) {
 		return true
 	}
 	return false
@@ -231,9 +292,16 @@ func isNonExecutableXSSContentType(ct string) bool {
 	switch {
 	case ct == "application/json",
 		ct == "text/plain",
+		ct == "text/csv",
+		ct == "text/xml",
+		ct == "application/xml",
 		ct == "application/octet-stream",
+		ct == "application/pdf",
+		ct == "application/zip",
 		strings.HasPrefix(ct, "image/") && ct != "image/svg+xml",
 		strings.HasPrefix(ct, "font/"),
+		strings.HasPrefix(ct, "audio/"),
+		strings.HasPrefix(ct, "video/"),
 		ct == "text/css":
 		return true
 	default:

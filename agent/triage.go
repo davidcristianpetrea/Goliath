@@ -483,7 +483,7 @@ func triageRelevant(nodes []*db.Node, in db.RecordFindingInput, cap int) []*db.N
 	return out
 }
 
-var endpointTokenRe = regexp.MustCompile(`/(?:rest|api|v[0-9])/[a-z0-9_{}./-]+`)
+var endpointTokenRe = regexp.MustCompile(`/(?:rest|api|v[0-9]|graphql|webhook|callback|admin|users|auth|oauth|login|signup|account|internal|service|proxy|gateway|ws)/[a-z0-9_{}./-]+`)
 
 func endpointTokens(s string) map[string]bool {
 	out := map[string]bool{}

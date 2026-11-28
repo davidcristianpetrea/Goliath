@@ -11,6 +11,7 @@ package llmpool
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -80,15 +81,22 @@ func (r *Registry) tripAfter() int {
 }
 
 // coolFor is the cooling-off window for the trips-th trip (1-based): the fixed
-// override when set, else the ladder (last rung repeats). Callers hold r.mu.
+// override when set, else the ladder (last rung repeats) with ±20% jitter to
+// prevent thundering herd when multiple profiles trip at the same instant.
+// Callers hold r.mu.
 func (r *Registry) coolFor(trips int) time.Duration {
 	if r.cooldown > 0 {
 		return r.cooldown
 	}
+	var base time.Duration
 	if trips-1 < len(backoff) {
-		return backoff[trips-1]
+		base = backoff[trips-1]
+	} else {
+		base = backoff[len(backoff)-1]
 	}
-	return backoff[len(backoff)-1]
+	// Add ±20% jitter to avoid synchronized probes across profiles.
+	jitter := time.Duration(float64(base) * (0.8 + 0.4*rand.Float64()))
+	return jitter
 }
 
 // NewRegistry builds an empty registry. persist/forget may be nil.

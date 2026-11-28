@@ -7,6 +7,7 @@
 @import "../styles/presets/neon.css";
 @import "../styles/presets/soft-pop.css";
 @import "../styles/presets/tangerine.css";
+@import "../styles/presets/goliath.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -110,15 +111,15 @@ These serve as the fallback; there is no separate default.css file. */
   --popover-foreground: #f5f5f7;
   --primary: #f5f5f7;
   --primary-foreground: #09090b;
-  --secondary: #18181c;
+  --secondary: #1a1a1f;
   --secondary-foreground: #f5f5f7;
-  --muted: #18181c;
-  --muted-foreground: #8e8e9a;
-  --accent: #1c1c21;
+  --muted: #1a1a1f;
+  --muted-foreground: #9898a6;
+  --accent: #1e1e24;
   --accent-foreground: #f5f5f7;
   --destructive: oklch(0.68 0.2 24);
-  --border: rgba(255, 255, 255, 0.09);
-  --input: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.11);
+  --input: rgba(255, 255, 255, 0.16);
   --ring: rgba(245, 245, 247, 0.35);
   --chart-1: #f5f5f7;
   --chart-2: #a1a1aa;
@@ -129,9 +130,9 @@ These serve as the fallback; there is no separate default.css file. */
   --sidebar-foreground: #f5f5f7;
   --sidebar-primary: #f5f5f7;
   --sidebar-primary-foreground: #09090b;
-  --sidebar-accent: #18181c;
+  --sidebar-accent: #1a1a1f;
   --sidebar-accent-foreground: #f5f5f7;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-border: rgba(255, 255, 255, 0.10);
   --sidebar-ring: rgba(245, 245, 247, 0.35);
   --syntax-key: #e4e4e7;
   --syntax-string: #34d399;
