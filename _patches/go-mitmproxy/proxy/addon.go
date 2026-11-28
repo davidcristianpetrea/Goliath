@@ -82,9 +82,9 @@ func (addon *BaseAddon) AccessProxyServer(req *http.Request, res http.ResponseWr
 func (addon *BaseAddon) WebSocketStart(*Flow)                                         {}
 func (addon *BaseAddon) WebSocketMessage(*Flow)                                       {}
 func (addon *BaseAddon) WebSocketEnd(*Flow)                                           {}
-func (addon *BaseAddon) SSEStart(*Flow)    {}
-func (addon *BaseAddon) SSEMessage(*Flow)  {}
-func (addon *BaseAddon) SSEEnd(*Flow)      {}
+func (addon *BaseAddon) SSEStart(*Flow)                                               {}
+func (addon *BaseAddon) SSEMessage(*Flow)                                             {}
+func (addon *BaseAddon) SSEEnd(*Flow)                                                 {}
 func (addon *BaseAddon) RequestError(*Flow, error)                                    {}
 func (addon *BaseAddon) HTTPConnectError(*Flow, error)                                {}
 
@@ -220,7 +220,6 @@ func (addon *LogAddon) SSEEnd(f *Flow) {
 		eventCount,
 		time.Since(f.StartTime).Milliseconds())
 }
-
 
 type UpstreamCertAddon struct {
 	BaseAddon

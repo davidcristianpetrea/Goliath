@@ -1,17 +1,15 @@
-# ARTEX from the published GHCR image, with the same PostgreSQL service as
+# Goliath from a published GHCR image, with the same PostgreSQL service as
 # docker-compose.yml. Use this file to run and update without a git checkout:
 #
 #   docker compose -f docker-compose.ghcr.yml pull
 #   docker compose -f docker-compose.ghcr.yml up -d
 #
-# The image is published from the next tagged release: v0.7.0 predates the
-# GHCR publish step, so the pull above fails with "denied" until then. Use
-# `docker compose up -d --build` with docker-compose.yml in the meantime.
+# Use `docker compose up -d --build` with docker-compose.yml to build locally.
 #
-# Set POSTGRES_PASSWORD in .env. Pin the image with ARTEX_IMAGE_TAG=v0.7.1 in
+# Set POSTGRES_PASSWORD in .env. Pin the image with GOLIATH_IMAGE_TAG=v0.5.0 in
 # .env; unset uses latest. The image carries the built-in /app/skills; this file
 # does not mount a host skills/ directory. To use custom skills, copy them into a
-# host directory and add `- ./skills:/app/skills` to the artex volumes.
+# host directory and add `- ./skills:/app/skills` to the goliath volumes.
 services:
   postgres:
     image: postgres:16-alpine
@@ -29,7 +27,7 @@ services:
     restart: unless-stopped
 
   artex:
-    image: ghcr.io/baarai/artex:${ARTEX_IMAGE_TAG:-latest}
+    image: ghcr.io/davidcristianpetrea/goliath:${GOLIATH_IMAGE_TAG:-latest}
     # Agent processes run as an unprivileged executor (-exec-uid): no setuid program
     # or file capability may raise them back to root.
     security_opt:

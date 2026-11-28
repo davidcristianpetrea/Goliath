@@ -8,7 +8,7 @@
 
 **Self-hosted autonomous penetration testing — LXC-native, NVIDIA NIM & local-LLM ready, evidence-verified.**
 
-An actively reworked, open-source (AGPL-3.0) fork of [BaaRai/ARTEX](https://github.com/BaaRai/ARTEX) (originally [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX)).
+An actively reworked, open-source (AGPL-3.0) fork of [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX).
 
 [![License](https://img.shields.io/badge/License-AGPL--3.0-101012)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.26-09090b)](go.mod)
@@ -25,9 +25,9 @@ An actively reworked, open-source (AGPL-3.0) fork of [BaaRai/ARTEX](https://gith
 | :--- | :--- | :--- |
 | **Deployment** | Built primarily around Docker & Docker Compose | **First-class Proxmox LXC / Debian / Ubuntu installer** (`scripts/lxc-install.sh`, `scripts/proxmox-create-lxc.sh`) with zero Docker dependency, `--from-release`, LXC-safe `systemd` unit, `goliath-ctl` CLI (`update`, `trust-ca`, `doctor`, `backup`), and `GOLIATH_*` env aliases |
 | **Runtime Tooling** | Assumes Docker image tools exist on `PATH` | **Runtime CLI tool inventory** (`agent/tool_inventory.go`) probes `PATH`, feeds agents only installed tools, and displays live status in **System → Tools** |
-| **NVIDIA NIM & Local LLMs** | Ollama regex 400 crash, `max_tokens` context overflow, local OpenAI key gate, private LAN SSRF block | **One-click provider presets** (NVIDIA NIM Cloud/Local, Ollama, vLLM, LM Studio, llama.cpp, OpenRouter, Gemini), **auto-detected context windows**, **keyless local OpenAI**, **Allow Private/LAN** toggle (metadata IPs still blocked), `Retry-After` 429 backoff, anchored JSON Schema regex, and `/api/tags` fallback |
-| **False-Positive Defense** | LLM triage locked to custom llama.cpp `/v1/systemone` endpoint; weak deterministic checks | **Deterministic FP Guard** (`agent/fp_guard.go`: XSS `Content-Type`/escaping, 4xx/5xx-only, baseline-identical & soft-404/SPA shell, header/CORS inflation) + **Universal `ChatTriageClient`** (dedup & live FP judge) + **Brotli/Zstd** verification + **Re-verify** button |
-| **Web UI & Dark Mode** | Default light theme, glare on auth panels, legacy purple branding | **Deep Matte Carbon** dark mode (`#09090b` / `#121215`) & Warm Alabaster light mode with `Inter` / `Sora` / `IBM Plex Mono` typography inspired by [davidpetrea.ro](https://davidpetrea.ro), pure-vector **GOLIATH** wordmark, syntax-highlighted HTTP blocks, `Verified only` filter, and HackerOne/Bugcrowd scope paste parser |
+| **NVIDIA NIM & Local LLMs** | Ollama regex 400 crash, `max_tokens` context overflow, local OpenAI key gate, private LAN SSRF block | **One-click provider presets** (NVIDIA NIM Cloud/Local, Ollama, vLLM, LM Studio, llama.cpp, OpenRouter, Gemini), **0-based ascending LLM pool priority** (0 = highest) with bounded circuit-breaker jitter, **auto-detected context windows**, **keyless local OpenAI**, **Allow Private/LAN** toggle (metadata IPs still blocked), `Retry-After` 429 backoff, and `/api/tags` fallback |
+| **False-Positive Defense & Compaction** | LLM triage locked to custom llama.cpp `/v1/systemone` endpoint; weak deterministic checks | **9-rule Deterministic FP Guard** (`agent/fp_guard.go`: XSS `Content-Type`/escaping/CSP, 4xx/5xx-only, baseline-identical & soft-404/SPA shell, SSRF 3xx-only, header/CORS/rate-limit inflation) + **Universal `ChatTriageClient`** (dedup & live FP judge across all proof bodies) + **Brotli/Zstd** verification + **Re-verify** button + resilient cold-graph compaction retries |
+| **Web UI & Mobile Experience** | Default light theme, glare on auth panels, desktop-only tables | **Goliath Teal/Carbon** theme (`#080e12` / `#38d9d4`) & Deep Matte Carbon dark mode inspired by [davidpetrea.ro](https://davidpetrea.ro), **mobile-first responsive UI** (bottom nav bar, mobile task/finding cards, collapsible chat & filter drawers, auto-closing sidebar), pure-vector **GOLIATH** wordmark, and HackerOne/Bugcrowd scope paste parser |
 
 ---
 
@@ -85,4 +85,4 @@ docker compose up -d --build
 
 ## Credits & License
 
-Goliath is licensed under **AGPL-3.0** (see [LICENSE](LICENSE)) and builds upon the open-source foundation of [BaaRai/ARTEX](https://github.com/BaaRai/ARTEX) and [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX).
+Goliath is licensed under **AGPL-3.0** (see [LICENSE](LICENSE)) and is originally based on [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX).

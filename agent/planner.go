@@ -129,6 +129,16 @@ func (p *Planner) todoFor(expID int64) *actool.TodoStore {
 	defer p.todoMu.Unlock()
 	s := p.todos[expID]
 	if s == nil {
+		if len(p.todos) >= 64 {
+			for k := range p.todos {
+				if k != expID {
+					delete(p.todos, k)
+					if len(p.todos) < 64 {
+						break
+					}
+				}
+			}
+		}
 		s = actool.NewTodoStore()
 		p.todos[expID] = s
 	}

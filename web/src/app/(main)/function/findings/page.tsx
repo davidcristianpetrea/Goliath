@@ -15,6 +15,7 @@ import {
   InfoIcon,
   SearchIcon,
   ShieldAlertIcon,
+  SlidersHorizontalIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -181,6 +182,7 @@ export default function FindingsPage() {
   const retestRefreshVersion = React.useRef(0);
   const [deepenDescription, setDeepenDescription] = React.useState("");
   const [deepening, setDeepening] = React.useState(false);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const filterFingerprint = JSON.stringify([
     severity,
     status,
@@ -1033,15 +1035,15 @@ export default function FindingsPage() {
         </Tabs>
       </div>
       <div className="flex flex-1 flex-col gap-4 md:gap-6">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+        <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:pb-0 lg:grid-cols-8">
           {statCards.map((stat) => {
             const StatIcon = stat.icon;
             return (
-              <Card key={stat.label} className="gap-1 py-4">
-                <CardHeader className="px-4">
-                  <CardDescription>{stat.label}</CardDescription>
-                  <CardTitle className={cn("flex items-center gap-2 text-2xl tabular-nums", stat.tone)}>
-                    <StatIcon className="size-5" aria-hidden="true" />
+              <Card key={stat.label} className="min-w-[8rem] shrink-0 gap-1 py-3 sm:min-w-0 sm:py-4">
+                <CardHeader className="px-3 sm:px-4">
+                  <CardDescription className="truncate">{stat.label}</CardDescription>
+                  <CardTitle className={cn("flex items-center gap-2 text-xl tabular-nums sm:text-2xl", stat.tone)}>
+                    <StatIcon className="size-4 sm:size-5" aria-hidden="true" />
                     {stat.value}
                   </CardTitle>
                 </CardHeader>
@@ -1064,73 +1066,30 @@ export default function FindingsPage() {
             </InputGroupAddon>
           </InputGroup>
 
-          <ToggleGroup
-            type="single"
-            value={severity}
-            onValueChange={(value) => value && setSeverity(value as "all" | Severity)}
-            variant="outline"
-            size="sm"
-            spacing={0}
-          >
-            {(
-              [
-                ["all", t("All")],
-                ["critical", t("Critical")],
-                ["high", t("High")],
-                ["medium", t("Medium")],
-                ["low", t("Low")],
-              ] as const
-            ).map(([val, label]) => (
-              <ToggleGroupItem key={val} value={val} aria-label={t("Filter by {label} severity", { label })}>
-                {label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-
-          <Select value={status} onValueChange={(v) => setStatus(v as "all" | FindingStatus)}>
-            <SelectTrigger size="sm" className="w-32">
-              <SelectValue placeholder={t("Status")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("All statuses")}</SelectItem>
-              {FINDING_STATUSES.map((st) => (
-                <SelectItem key={st} value={st}>
-                  {statusMeta("finding", st).label}
-                </SelectItem>
+          <div className="no-scrollbar max-w-full overflow-x-auto">
+            <ToggleGroup
+              type="single"
+              value={severity}
+              onValueChange={(value) => value && setSeverity(value as "all" | Severity)}
+              variant="outline"
+              size="sm"
+              spacing={0}
+            >
+              {(
+                [
+                  ["all", t("All")],
+                  ["critical", t("Critical")],
+                  ["high", t("High")],
+                  ["medium", t("Medium")],
+                  ["low", t("Low")],
+                ] as const
+              ).map(([val, label]) => (
+                <ToggleGroupItem key={val} value={val} aria-label={t("Filter by {label} severity", { label })}>
+                  {label}
+                </ToggleGroupItem>
               ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={reportState} onValueChange={(v) => setReportState(v as "all" | FindingReportState)}>
-            <SelectTrigger size="sm" className="w-40">
-              <SelectValue placeholder={t("Report stage")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("All report stages")}</SelectItem>
-              {FINDING_REPORT_STATES.map((st) => (
-                <SelectItem key={st} value={st}>
-                  {REPORT_STATE_META[st].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={verificationStatus}
-            onValueChange={(v) => setVerificationStatus(v as "all" | VerificationStatus)}
-          >
-            <SelectTrigger size="sm" className="w-48">
-              <SelectValue placeholder={t("Verification")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("All verification states")}</SelectItem>
-              {VERIFICATION_STATUSES.map((st) => (
-                <SelectItem key={st} value={st}>
-                  {VERIFICATION_META[st].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            </ToggleGroup>
+          </div>
 
           <Button
             type="button"
@@ -1142,56 +1101,115 @@ export default function FindingsPage() {
             {t("Verified only")}
           </Button>
 
-          <Select value={vulnclass} onValueChange={setVulnclass}>
-            <SelectTrigger size="sm" className="w-40">
-              <SelectValue placeholder={t("Vulnerability type")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("All types")}</SelectItem>
-              {stats.vulnclasses.map((vc) => (
-                <SelectItem key={vc} value={vc}>
-                  {vc}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Button
+            type="button"
+            size="sm"
+            variant={filtersOpen ? "secondary" : "outline"}
+            className="sm:hidden"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+          >
+            <SlidersHorizontalIcon className="size-3.5" />
+            {t("Filters")}
+          </Button>
 
-          <Select value={task} onValueChange={setTask}>
-            <SelectTrigger size="sm" className="w-48">
-              <SelectValue placeholder={t("Task")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("All tasks")}</SelectItem>
-              <SelectItem value={UNASSIGNED_TASK}>{t("Unlinked / task deleted")}</SelectItem>
-              {(stats.tasks ?? []).map((option) => {
-                const id = String(option.id);
-                const label = option.name || option.description || t("Task #{id} (deleted)", { id });
-                return (
-                  <SelectItem key={id} value={id}>
-                    <span className="flex w-full items-center gap-2">
-                      <span className="max-w-[14rem] truncate" title={label}>
-                        {label}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-muted-foreground tabular-nums">
-                        <BugIcon className="size-3.5" aria-hidden="true" />
-                        {option.count}
-                      </span>
-                    </span>
+          <div className={cn("w-full flex-wrap items-center gap-2 sm:flex sm:w-auto", filtersOpen ? "flex" : "hidden")}>
+            <Select value={status} onValueChange={(v) => setStatus(v as "all" | FindingStatus)}>
+              <SelectTrigger size="sm" className="w-[calc(50%-0.25rem)] sm:w-32">
+                <SelectValue placeholder={t("Status")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All statuses")}</SelectItem>
+                {FINDING_STATUSES.map((st) => (
+                  <SelectItem key={st} value={st}>
+                    {statusMeta("finding", st).label}
                   </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={sort} onValueChange={(v) => setSort(v as "severity" | "time")}>
-            <SelectTrigger size="sm" className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="severity">{t("By severity")}</SelectItem>
-              <SelectItem value="time">{t("By time")}</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={reportState} onValueChange={(v) => setReportState(v as "all" | FindingReportState)}>
+              <SelectTrigger size="sm" className="w-[calc(50%-0.25rem)] sm:w-40">
+                <SelectValue placeholder={t("Report stage")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All report stages")}</SelectItem>
+                {FINDING_REPORT_STATES.map((st) => (
+                  <SelectItem key={st} value={st}>
+                    {REPORT_STATE_META[st].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={verificationStatus}
+              onValueChange={(v) => setVerificationStatus(v as "all" | VerificationStatus)}
+            >
+              <SelectTrigger size="sm" className="w-[calc(50%-0.25rem)] sm:w-48">
+                <SelectValue placeholder={t("Verification")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All verification states")}</SelectItem>
+                {VERIFICATION_STATUSES.map((st) => (
+                  <SelectItem key={st} value={st}>
+                    {VERIFICATION_META[st].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={vulnclass} onValueChange={setVulnclass}>
+              <SelectTrigger size="sm" className="w-[calc(50%-0.25rem)] sm:w-40">
+                <SelectValue placeholder={t("Vulnerability type")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All types")}</SelectItem>
+                {stats.vulnclasses.map((vc) => (
+                  <SelectItem key={vc} value={vc}>
+                    {vc}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={task} onValueChange={setTask}>
+              <SelectTrigger size="sm" className="w-[calc(50%-0.25rem)] sm:w-48">
+                <SelectValue placeholder={t("Task")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All tasks")}</SelectItem>
+                <SelectItem value={UNASSIGNED_TASK}>{t("Unlinked / task deleted")}</SelectItem>
+                {(stats.tasks ?? []).map((option) => {
+                  const id = String(option.id);
+                  const label = option.name || option.description || t("Task #{id} (deleted)", { id });
+                  return (
+                    <SelectItem key={id} value={id}>
+                      <span className="flex w-full items-center gap-2">
+                        <span className="max-w-[14rem] truncate" title={label}>
+                          {label}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-muted-foreground tabular-nums">
+                          <BugIcon className="size-3.5" aria-hidden="true" />
+                          {option.count}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+
+            <Select value={sort} onValueChange={(v) => setSort(v as "severity" | "time")}>
+              <SelectTrigger size="sm" className="w-[calc(50%-0.25rem)] sm:w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="severity">{t("By severity")}</SelectItem>
+                <SelectItem value="time">{t("By time")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="ml-auto flex items-center gap-3">
             {selectedIds.size > 0 && (

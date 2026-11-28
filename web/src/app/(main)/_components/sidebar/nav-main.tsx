@@ -187,6 +187,7 @@ function InterceptPendingBadge() {
 }
 
 function NavLinkItem({ item, isActive, showIconFallback }: NavLinkItemProps) {
+  const { isMobile, setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild aria-disabled={item.disabled} tooltip={item.title} isActive={isActive}>
@@ -195,6 +196,9 @@ function NavLinkItem({ item, isActive, showIconFallback }: NavLinkItemProps) {
           href={item.url}
           target={item.newTab ? "_blank" : undefined}
           rel={item.newTab ? "noreferrer" : undefined}
+          onClick={() => {
+            if (isMobile) setOpenMobile(false);
+          }}
         >
           <NavLinkIcon item={item} showFallback={showIconFallback} />
           <span>{item.title}</span>
@@ -221,6 +225,7 @@ function NavLinkIcon({ item, showFallback }: NavLinkIconProps) {
 
 function NavDropdownItem({ item, isActive, isSubItemActive }: NavDropdownItemProps) {
   const Icon = item.icon;
+  const { isMobile, setOpenMobile } = useSidebar();
 
   return (
     <SidebarMenuItem>
@@ -246,6 +251,9 @@ function NavDropdownItem({ item, isActive, isSubItemActive }: NavDropdownItemPro
                     rel={subItem.newTab ? "noreferrer" : undefined}
                     aria-current={isSubItemActive(subItem.url) ? "page" : undefined}
                     className="flex items-center gap-2"
+                    onClick={() => {
+                      if (isMobile) setOpenMobile(false);
+                    }}
                   >
                     {SubIcon && <SubIcon />}
                     <span>{subItem.title}</span>
@@ -262,6 +270,7 @@ function NavDropdownItem({ item, isActive, isSubItemActive }: NavDropdownItemPro
 
 function NavCollapsibleItem({ item, isActive, defaultOpen, isSubItemActive }: NavCollapsibleItemProps) {
   const Icon = item.icon;
+  const { isMobile, setOpenMobile } = useSidebar();
 
   return (
     <Collapsible asChild defaultOpen={defaultOpen} className="group/collapsible">
@@ -292,6 +301,9 @@ function NavCollapsibleItem({ item, isActive, defaultOpen, isSubItemActive }: Na
                       href={subItem.url}
                       target={subItem.newTab ? "_blank" : undefined}
                       rel={subItem.newTab ? "noreferrer" : undefined}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
                     >
                       {SubIcon && <SubIcon />}
                       <span>{subItem.title}</span>

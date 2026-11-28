@@ -144,3 +144,36 @@ func TestCompactorCompressRetriesWithBetweenToolsOnAnthropic400(t *testing.T) {
 		t.Fatalf("expected thinking sequence [disabled between_tools], got %v", thinkingTypes)
 	}
 }
+
+func TestCompactionRetriesOnEmptyBody(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		if calls == 1 {
+			_, _ = w.Write([]byte(`{"id":"msg_1","type":"message","role":"assistant","content":[],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":0}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"id":"msg_2","type":"message","role":"assistant","content":[{"type":"text","text":"Retry digest (#10,#11)."}],"stop_reason":"end_turn","usage":{"input_tokens":12,"output_tokens":5}}`))
+	}))
+	defer srv.Close()
+
+	prov, err := llm.NewProvider(llm.Config{
+		Format:  llm.FormatAnthropic,
+		BaseURL: srv.URL,
+		APIKey:  "test-key",
+		Model:   "test-model",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := NewCompactor(prov, "test-model")
+	g, b, nodes := sampleCompactionInputs()
+	got, err := c.compress(context.Background(), g, b, nodes)
+	if err != nil {
+		t.Fatalf("compress failed on empty-body retry: %v", err)
+	}
+	if got != "Retry digest (#10,#11)." || calls != 2 {
+		t.Fatalf("got=%q calls=%d, want Retry digest (#10,#11). and 2 calls", got, calls)
+	}
+}

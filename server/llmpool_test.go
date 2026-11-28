@@ -3,15 +3,15 @@ package server
 import "testing"
 
 // The status list drives the "pooling order" strip in the UI, so it has to match the
-// order PoolProfiles actually runs: active first, then priority DESC, then id ASC
+// order PoolProfiles actually runs: active first, then priority ASC (0 = highest), then id ASC
 // (input arrives id-ordered, so equal priorities must keep their relative order).
 func TestSortPoolStatusMatchesChainOrder(t *testing.T) {
 	in := []LLMPoolMemberStatus{
-		{ProfileID: "1", Name: "low", Priority: 0},
-		{ProfileID: "2", Name: "active", Priority: 0, Active: true},
-		{ProfileID: "3", Name: "high", Priority: 10},
-		{ProfileID: "4", Name: "mid-a", Priority: 5},
-		{ProfileID: "5", Name: "mid-b", Priority: 5},
+		{ProfileID: "1", Name: "low", Priority: 5},
+		{ProfileID: "2", Name: "active", Priority: 5, Active: true},
+		{ProfileID: "3", Name: "high", Priority: 0},
+		{ProfileID: "4", Name: "mid-a", Priority: 1},
+		{ProfileID: "5", Name: "mid-b", Priority: 1},
 	}
 	sortPoolStatus(in)
 
@@ -27,12 +27,12 @@ func TestSortPoolStatusMatchesChainOrder(t *testing.T) {
 	}
 }
 
-// The active profile heads the chain no matter how low its own priority is —
+// The active profile heads the chain no matter how high its own priority number is —
 // that's the documented precedence, and the UI must not imply otherwise.
 func TestActiveProfileHeadsStatusList(t *testing.T) {
 	in := []LLMPoolMemberStatus{
-		{ProfileID: "1", Name: "loud", Priority: 999},
-		{ProfileID: "2", Name: "active", Priority: -5, Active: true},
+		{ProfileID: "1", Name: "loud", Priority: 0},
+		{ProfileID: "2", Name: "active", Priority: 999, Active: true},
 	}
 	sortPoolStatus(in)
 	if in[0].Name != "active" {

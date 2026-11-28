@@ -13,13 +13,13 @@ import (
 
 // sseReader wraps an io.Reader to parse SSE events and trigger hooks
 type sseReader struct {
-	flow     *Flow
-	proxy    *Proxy
-	reader   *bufio.Reader
-	buffer   []byte      // 当前事件累积的数据
-	started  bool
-	ended    bool
-	mu       sync.Mutex
+	flow    *Flow
+	proxy   *Proxy
+	reader  *bufio.Reader
+	buffer  []byte // 当前事件累积的数据
+	started bool
+	ended   bool
+	mu      sync.Mutex
 }
 
 // newSSEReader creates a new SSE reader wrapper

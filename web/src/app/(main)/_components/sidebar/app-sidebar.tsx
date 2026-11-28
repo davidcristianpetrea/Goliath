@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { GoliathLogo } from "@/components/goliath-logo";
 import { APP_CONFIG } from "@/config/app-config";
@@ -25,6 +26,7 @@ import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const currentUser = useCurrentUser();
+  const { isMobile, setOpenMobile } = useSidebar();
   const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
     useShallow((s) => ({
       sidebarVariant: s.sidebarVariant,
@@ -42,7 +44,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
-              <Link prefetch={false} href="/function/tasks" aria-label={APP_CONFIG.name}>
+              <Link
+                prefetch={false}
+                href="/function/tasks"
+                aria-label={APP_CONFIG.name}
+                onClick={() => {
+                  if (isMobile) setOpenMobile(false);
+                }}
+              >
                 <GoliathLogo variant="full" className="group-data-[collapsible=icon]:hidden" />
                 <GoliathLogo variant="mark" className="hidden group-data-[collapsible=icon]:block" />
               </Link>

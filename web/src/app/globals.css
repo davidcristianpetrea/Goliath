@@ -153,6 +153,12 @@ These serve as the fallback; there is no separate default.css file. */
   html {
     @apply font-sans;
   }
+
+  button,
+  a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer utilities {
@@ -246,6 +252,15 @@ These serve as the fallback; there is no separate default.css file. */
 
 html {
   overscroll-behavior: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .disable-transitions * {

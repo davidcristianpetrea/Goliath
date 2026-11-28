@@ -81,8 +81,9 @@ func (r *Registry) tripAfter() int {
 }
 
 // coolFor is the cooling-off window for the trips-th trip (1-based): the fixed
-// override when set, else the ladder (last rung repeats) with ±20% jitter to
-// prevent thundering herd when multiple profiles trip at the same instant.
+// override when set, else the ladder (last rung repeats) with 0–15% downward
+// jitter (85%–100% of rung) to prevent thundering herd when multiple profiles
+// trip at the same instant without exceeding the advertised cooldown cap.
 // Callers hold r.mu.
 func (r *Registry) coolFor(trips int) time.Duration {
 	if r.cooldown > 0 {
@@ -94,8 +95,8 @@ func (r *Registry) coolFor(trips int) time.Duration {
 	} else {
 		base = backoff[len(backoff)-1]
 	}
-	// Add ±20% jitter to avoid synchronized probes across profiles.
-	jitter := time.Duration(float64(base) * (0.8 + 0.4*rand.Float64()))
+	// Apply 0–15% downward jitter to avoid synchronized probes across profiles.
+	jitter := time.Duration(float64(base) * (0.85 + 0.15*rand.Float64()))
 	return jitter
 }
 

@@ -1,6 +1,6 @@
 # ARTEX architecture (code-level companion)
 
-The README's [Architecture](https://github.com/BaaRai/ARTEX#architecture) section has the
+The [README](../README.md) has the overview and quick-start guide. This document records the code-level map,
 component diagram and the 10,000-foot view. This document records the code-level map,
 the execution flow and the trust boundaries that are easy to miss when reading the
 packages in isolation.

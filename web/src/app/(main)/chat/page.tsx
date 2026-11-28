@@ -1360,16 +1360,45 @@ export default function ChatPage() {
     [reloadConvs],
   );
   const cancelRename = React.useCallback(() => setRenamingId(null), []);
+  const [mobileListOpen, setMobileListOpen] = React.useState(false);
 
   return (
     <div
       data-content-padding="false"
-      className="flex h-[calc(100svh-3rem)] min-w-0 flex-col overflow-hidden p-3 sm:p-4 md:h-[calc(100svh-4rem)] md:p-6"
+      className="flex h-[calc(100svh-6.5rem)] min-w-0 flex-col overflow-hidden p-2.5 sm:p-4 md:h-[calc(100svh-4rem)] md:p-6"
     >
-      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 grid-rows-[minmax(10rem,15rem)_minmax(0,1fr)] gap-3 md:grid-cols-[18rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)] md:gap-4">
+      <div
+        className={cn(
+          "grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-2.5 md:grid-cols-[18rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)] md:gap-4",
+          mobileListOpen ? "grid-rows-[minmax(12rem,18rem)_minmax(0,1fr)]" : "grid-rows-[auto_minmax(0,1fr)]",
+        )}
+      >
         {/* left: conversation list */}
         <div className="bg-card flex flex-col overflow-hidden rounded-lg border">
-          <div className="flex flex-col gap-2 border-b p-2">
+          <div className="flex items-center justify-between gap-2 border-b px-2.5 py-2 md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileListOpen((v) => !v)}
+              aria-expanded={mobileListOpen}
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs font-medium"
+            >
+              <ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", !mobileListOpen && "-rotate-90")} />
+              <span className="shrink-0 text-muted-foreground">{t("Conversations")}</span>
+              {selected && (
+                <span className="min-w-0 truncate text-foreground">· {selected.title || t("New conversation")}</span>
+              )}
+            </button>
+            <Button
+              size="xs"
+              onClick={() => {
+                selectConversation(null);
+                setMobileListOpen(false);
+              }}
+            >
+              <PlusIcon className="size-3.5" /> {t("New")}
+            </Button>
+          </div>
+          <div className={cn("flex-col gap-2 border-b p-2 md:flex", mobileListOpen ? "flex" : "hidden")}>
             <Button size="sm" className="w-full" onClick={() => selectConversation(null)}>
               <PlusIcon /> {t("New conversation")}
             </Button>
@@ -1443,7 +1472,10 @@ export default function ChatPage() {
           <ScrollArea
             key={agentFilter === null ? "all" : `agent:${agentFilter}`}
             type="auto"
-            className="min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!"
+            className={cn(
+              "min-h-0 min-w-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block! md:block",
+              !mobileListOpen && "hidden",
+            )}
           >
             <div className="flex min-w-0 flex-col gap-0.5 p-2">
               {filteredConversations.length === 0 && (
@@ -1459,7 +1491,10 @@ export default function ChatPage() {
                   active={selectedId === c.id}
                   renaming={renamingId === c.id}
                   renameText={renamingId === c.id ? renameText : ""}
-                  onSelect={selectConversation}
+                  onSelect={(cid) => {
+                    selectConversation(cid);
+                    setMobileListOpen(false);
+                  }}
                   onStartRename={startRename}
                   onRenameText={setRenameText}
                   onCommitRename={commitRename}
@@ -1491,7 +1526,10 @@ export default function ChatPage() {
                           active={selectedId === c.id}
                           renaming={renamingId === c.id}
                           renameText={renamingId === c.id ? renameText : ""}
-                          onSelect={selectConversation}
+                          onSelect={(cid) => {
+                    selectConversation(cid);
+                    setMobileListOpen(false);
+                  }}
                           onStartRename={startRename}
                           onRenameText={setRenameText}
                           onCommitRename={commitRename}

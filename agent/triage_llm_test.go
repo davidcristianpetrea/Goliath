@@ -61,3 +61,22 @@ func TestChatTriageClientEvaluateFP(t *testing.T) {
 		t.Fatalf("unexpected FP result: %+v", res)
 	}
 }
+
+func TestChatTriageClientEvaluateFPFencedJSON(t *testing.T) {
+	c := &ChatTriageClient{
+		Model:    "mistralai/mistral-large-4-1t-a52b",
+		Provider: mockTriageProvider{reply: "Here is my evaluation:\n```json\n{\"likely_fp\": false, \"confidence\": 0.92, \"reason\": \"Confirmed {braces} in response\"}\n```"},
+	}
+	res, err := c.EvaluateFalsePositive(context.Background(), TriageCandidate{
+		Name:      "SSRF",
+		VulnClass: "SSRF",
+		Severity:  "high",
+		Summary:   "Server-side fetch",
+	}, "HTTP/1.1 200 OK\n\n{\"title\":\"internal\"}")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.LikelyFP || res.Confidence < 0.9 {
+		t.Fatalf("unexpected FP result: %+v", res)
+	}
+}

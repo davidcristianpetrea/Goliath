@@ -223,8 +223,136 @@ export function FindingsTable({
   }
 
   return (
-    /* Fixed column widths keep expanded content from stretching the table; narrow screens scroll horizontally inside the table only. */
-    <Table className="min-w-[68rem] table-fixed">
+    <>
+      {/* Mobile card list */}
+      <div className="divide-y px-3 md:hidden">
+        {items.map((f) => {
+          const rowKey = findingRowKey(f);
+          const open = expandedKey === rowKey;
+          const retest = f.finding_id ? activeRetests[f.finding_id] : undefined;
+          return (
+            <div key={rowKey} className="flex flex-col gap-2 py-3">
+              <div className="flex items-start gap-2">
+                {f.finding_id && (
+                  <Checkbox
+                    className="mt-1"
+                    checked={selectedIds.has(f.finding_id)}
+                    onCheckedChange={(c) => onToggleSelected(f.finding_id as string, c === true)}
+                    aria-label={t("Select this vulnerability")}
+                  />
+                )}
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusBadge domain="severity" value={f.severity} dot />
+                    <VerificationBadge finding={f} />
+                    <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+                      {formatShortDateTime(f.ts, { seconds: false })}
+                    </span>
+                  </div>
+                  {f.finding_id ? (
+                    <Link
+                      href={`/function/findings/detail?id=${f.finding_id}`}
+                      className="block text-sm font-medium leading-snug hover:text-primary hover:underline"
+                    >
+                      {f.name || f.vulnclass || t("Uncategorized")}
+                    </Link>
+                  ) : (
+                    <span className="block text-sm font-medium leading-snug">
+                      {f.name || f.vulnclass || t("Uncategorized")}
+                    </span>
+                  )}
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{f.summary}</p>
+                  {f.assets && f.assets.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {f.assets.slice(0, 2).map((a) => (
+                        <code key={a.id} className="max-w-full truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
+                          {a.label}
+                        </code>
+                      ))}
+                      {f.assets.length > 2 && (
+                        <span className="text-[11px] text-muted-foreground">+{f.assets.length - 2}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 pl-6">
+                <div className="flex items-center gap-1.5">
+                  {f.finding_id ? (
+                    <Select value={f.status} onValueChange={(v) => onStatusChange(f, v as FindingStatus)}>
+                      <SelectTrigger size="sm" className="h-7 border-none px-1 shadow-none focus-visible:ring-0">
+                        <StatusBadge domain="finding" value={f.status} dot />
+                      </SelectTrigger>
+                      <SelectContent position="popper" align="start">
+                        {FINDING_STATUSES.map((st) => (
+                          <SelectItem key={st} value={st}>
+                            {statusMeta("finding", st).label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <StatusBadge domain="finding" value={f.status} dot />
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {f.finding_id && (
+                    <Button size="xs" variant="outline" asChild>
+                      <Link href={`/function/findings/detail?id=${f.finding_id}`}>{t("Details")}</Link>
+                    </Button>
+                  )}
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    aria-expanded={open}
+                    onClick={() => onToggleRow(f)}
+                  >
+                    <ChevronRightIcon className={cn("size-3.5 transition-transform", open && "rotate-90")} />
+                    {open ? t("Hide") : t("Evidence")}
+                  </Button>
+                </div>
+              </div>
+              {open && (
+                <div className="ml-6 flex flex-col gap-2 rounded-md border bg-muted/30 p-2.5 text-xs">
+                  <pre className="max-h-48 overflow-auto rounded bg-muted px-2.5 py-2 font-mono text-[11px] whitespace-pre-wrap">
+                    {f.evidence || t("(no evidence)")}
+                  </pre>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {retest ? (
+                      <Button asChild size="xs" variant="ghost">
+                        <Link href={`/chat?c=${retest.conversation_id}`}>
+                          <Spinner data-icon="inline-start" />
+                          {t("Retesting")}
+                        </Link>
+                      </Button>
+                    ) : (
+                      f.finding_id &&
+                      !f.inherited && (
+                        <Button size="xs" variant="outline" onClick={() => onRetest(f)}>
+                          <RotateCcwIcon className="size-3" /> {t("Retest")}
+                        </Button>
+                      )
+                    )}
+                    {f.finding_id && f.task_id && (
+                      <Button size="xs" variant="outline" onClick={() => onDeepen(f)}>
+                        <FlaskConicalIcon className="size-3" /> {t("Deepen")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {items.length === 0 && (
+          <div className="py-12 text-center text-sm text-muted-foreground">{t("No matching findings.")}</div>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block">
+        {/* Fixed column widths keep expanded content from stretching the table; narrow screens scroll horizontally inside the table only. */}
+        <Table className="min-w-[68rem] table-fixed">
       <TableHeader>
         <TableRow>
           <TableHead className="w-8">
@@ -563,5 +691,7 @@ export function FindingsTable({
         )}
       </TableBody>
     </Table>
+      </div>
+    </>
   );
 }

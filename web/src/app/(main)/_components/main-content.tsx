@@ -18,8 +18,9 @@ import { AccountSwitcher } from "./sidebar/account-switcher";
 import { LayoutControls } from "./sidebar/layout-controls";
 import { SearchDialog } from "./sidebar/search-dialog";
 import { ThemeSwitcher } from "./sidebar/theme-switcher";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 
-// Task detail pages stay as-is: they bring their own header/Tabs and padding, so no extra global header or padding is stacked here.
+// Task detail and finding detail pages stay as-is: they bring their own header/Tabs and padding, so no extra global header or padding is stacked here.
 function isFullBleed(pathname: string) {
   const p = (() => {
     try {
@@ -31,7 +32,7 @@ function isFullBleed(pathname: string) {
   // Static export enables trailingSlash, so the list page's own pathname is "/function/tasks/",
   // strip the trailing slash before the prefix test, or the list page would be mistaken for a detail page and lose the global header.
   const normalized = p.replace(/\/+$/, "");
-  return normalized.startsWith("/function/tasks/");
+  return normalized.startsWith("/function/tasks/") || normalized.startsWith("/function/findings/detail");
 }
 
 const RELEASES_URL = "https://github.com/davidcristianpetrea/Goliath/releases";
@@ -97,6 +98,7 @@ export function MainContent({ children }: { children: ReactNode }) {
         {isolationBanner}
         {updateBanner}
         {children}
+        <MobileBottomNav />
       </>
     );
   }
@@ -111,7 +113,7 @@ export function MainContent({ children }: { children: ReactNode }) {
           "[html[data-navbar-style=sticky]_&]:sticky [html[data-navbar-style=sticky]_&]:top-0 [html[data-navbar-style=sticky]_&]:z-50 [html[data-navbar-style=sticky]_&]:overflow-hidden [html[data-navbar-style=sticky]_&]:rounded-t-[inherit] [html[data-navbar-style=sticky]_&]:bg-background/50 [html[data-navbar-style=sticky]_&]:backdrop-blur-md",
         )}
       >
-        <div className="flex w-full items-center justify-between px-4 lg:px-6">
+        <div className="flex w-full items-center justify-between px-3 sm:px-4 lg:px-6">
           <div className="flex items-center gap-1 lg:gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -120,9 +122,11 @@ export function MainContent({ children }: { children: ReactNode }) {
             />
             <SearchDialog />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {version && (
-              <span className="font-medium text-muted-foreground text-xs tabular-nums">{t("Version · {version}", { version })}</span>
+              <span className="hidden font-medium text-muted-foreground text-xs tabular-nums sm:inline">
+                {t("Version · {version}", { version })}
+              </span>
             )}
             <LayoutControls />
             <ThemeSwitcher />
@@ -130,9 +134,10 @@ export function MainContent({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 has-data-[content-padding=false]:p-0 md:p-6 md:has-data-[content-padding=false]:p-0">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-3 pb-20 has-data-[content-padding=false]:p-0 md:p-6 md:pb-6 md:has-data-[content-padding=false]:p-0">
         {children}
       </div>
+      <MobileBottomNav />
     </>
   );
 }

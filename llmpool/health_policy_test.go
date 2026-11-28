@@ -65,3 +65,15 @@ func TestZeroPolicyKeepsDefaults(t *testing.T) {
 		t.Fatalf("cooldown=%v, want the first ladder rung (~1min)", d)
 	}
 }
+
+func TestCoolForJitterBounds(t *testing.T) {
+	reg := NewRegistry(nil, nil)
+	base := backoff[0]
+	lo := time.Duration(float64(base) * 0.85)
+	for i := range 100 {
+		d := reg.coolFor(1)
+		if d < lo || d > base {
+			t.Fatalf("iter %d: coolFor(1)=%v, want in [%v, %v]", i, d, lo, base)
+		}
+	}
+}

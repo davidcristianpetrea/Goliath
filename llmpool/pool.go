@@ -47,7 +47,7 @@ var ErrExhausted = errors.New("LLM failover: all profiles unavailable")
 // It is safe for concurrent use: members are immutable after construction and
 // all mutable state lives in the shared Registry.
 type Pool struct {
-	members []*Member // in chain order (active first, then priority DESC)
+	members []*Member // in chain order (active first, then priority ASC, 0 = highest)
 	health  *Registry
 	rr      atomic.Uint64 // rotates the starting point within an equal-priority group
 }

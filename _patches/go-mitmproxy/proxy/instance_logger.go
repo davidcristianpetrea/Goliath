@@ -53,7 +53,7 @@ func NewInstanceLoggerWithFile(addr string, instanceName string, logFilePath str
 			il.fileLogger = log.New()
 			il.fileLogger.SetOutput(file)
 			il.fileLogger.SetFormatter(&log.JSONFormatter{})
-			
+
 			// Use the file logger as base
 			il.logger = il.fileLogger.WithFields(log.Fields{
 				"instance_id":   il.InstanceID,

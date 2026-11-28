@@ -180,20 +180,21 @@ function FindingDetailInner() {
   return (
     <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col gap-0">
       {/* Sticky header */}
-      <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background/95 px-4 py-2.5 backdrop-blur lg:px-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
-          <Button asChild variant="ghost" size="icon" className="size-7">
+      <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background/95 px-3 py-2.5 backdrop-blur sm:px-4 lg:px-6">
+        <div className="flex items-start gap-2 sm:items-center">
+          <SidebarTrigger className="-ml-1 shrink-0" />
+          <Button asChild variant="ghost" size="icon" className="size-7 shrink-0">
             <Link href="/function/findings">
               <ArrowLeftIcon />
             </Link>
           </Button>
-          <ShieldAlertIcon className="size-4 text-muted-foreground" />
-          <h1 className="max-w-md truncate text-sm font-semibold" title={title}>
+          <ShieldAlertIcon className="mt-1 size-4 shrink-0 text-muted-foreground sm:mt-0" />
+          <h1 className="min-w-0 flex-1 line-clamp-2 text-sm font-semibold sm:max-w-md sm:line-clamp-none sm:truncate" title={title}>
             {title}
           </h1>
-          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">#{finding.id}</code>
-          <Separator orientation="vertical" className="mx-1 h-4" />
+          <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">#{finding.id}</code>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <StatusBadge domain="severity" value={finding.severity} dot />
           <StatusBadge domain="finding" value={finding.status} dot />
           <ReportStateBadge state={finding.report_state} />
@@ -211,14 +212,16 @@ function FindingDetailInner() {
             <Badge variant="outline">{t("Source task #{id} · read-only", { id: finding.source_task_id })}</Badge>
           )}
         </div>
-        <TabsList>
-          <TabsTrigger value="overview">{t("Overview")}</TabsTrigger>
-          <TabsTrigger value="lineage">{t("Exploration graph")}</TabsTrigger>
-        </TabsList>
+        <div className="no-scrollbar min-w-0 overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="overview">{t("Overview")}</TabsTrigger>
+            <TabsTrigger value="lineage">{t("Exploration graph")}</TabsTrigger>
+          </TabsList>
+        </div>
       </header>
 
       {/* Tab content */}
-      <div className="flex-1 p-4 lg:p-6">
+      <div className="flex-1 p-3 pb-20 sm:p-4 sm:pb-20 md:pb-6 lg:p-6">
         {/* Overview: left (digest + evidence) / right (status panel) */}
         <TabsContent value="overview" className="mt-0">
           <div className="grid gap-4 lg:grid-cols-3">

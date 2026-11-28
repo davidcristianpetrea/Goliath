@@ -842,7 +842,7 @@ export default function TasksPage() {
                 )}
               </div>
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TaskStatus | "all")}>
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-36">
                   <SelectValue placeholder={t("Status")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -857,7 +857,7 @@ export default function TasksPage() {
                 </SelectContent>
               </Select>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-40">
                   <SelectValue placeholder={t("Task category")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -956,80 +956,166 @@ export default function TasksPage() {
                 {t("No matching tasks.")}
               </div>
             ) : (
-              <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
-                <TableHeader className="[&_tr]:border-t">
-                  <TableRow>
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={headerChecked}
-                        onCheckedChange={(checked) => toggleSelectedPage(checked === true)}
-                        aria-label={t("Select all tasks on this page")}
-                      />
-                    </TableHead>
-                    <SortableTaskHead
-                      field="id"
-                      label="ID"
-                      activeField={sortField}
-                      direction={sortDirection}
-                      className="font-mono"
-                      onSort={sortTasksBy}
-                    />
-                    <TableHead>{t("Name")}</TableHead>
-                    <TableHead>{t("Description")}</TableHead>
-                    <TableHead>{t("Goal")}</TableHead>
-                    <SortableTaskHead
-                      field="status"
-                      label={t("Status")}
-                      activeField={sortField}
-                      direction={sortDirection}
-                      onSort={sortTasksBy}
-                    />
-                    <TableHead className="text-center">{t("Goal progress")}</TableHead>
-                    <TableHead className="text-center" title={t("Critical / High / Medium / Low")}>
-                      {t("Findings")} <span className="text-muted-foreground font-normal">{t("C/H/M/L")}</span>
-                    </TableHead>
-                    <TableHead className="text-center">{t("Running workers")}</TableHead>
-                    <SortableTaskHead
-                      field="created"
-                      label={t("Created at")}
-                      activeField={sortField}
-                      direction={sortDirection}
-                      align="right"
-                      onSort={sortTasksBy}
-                    />
-                    <SortableTaskHead
-                      field="duration"
-                      label={t("Duration")}
-                      activeField={sortField}
-                      direction={sortDirection}
-                      align="right"
-                      onSort={sortTasksBy}
-                    />
-                    <TableHead className="text-right">{t("Token")}</TableHead>
-                    <TableHead className="sticky right-0 z-10 bg-card text-right shadow-[-1px_0_0_0_hsl(var(--border))]">
-                      {t("Actions")}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginated.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      // only running tasks consume nowSec; other rows get 0 — with unchanged props, memo blocks the per-second tick's
-                      // whole-table re-render and only the running rows advance their duration.
-                      nowSec={task.status === "running" ? nowSec : 0}
-                      onDelete={deleteTask}
-                      onControl={controlTask}
-                      onRename={renameTask}
-                      onTogglePinned={toggleTaskPinned}
-                      onArchive={queueTaskArchive}
-                      selected={selectedIds.has(task.id)}
-                      onSelectedChange={toggleSelected}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
+              <>
+                {/* Mobile card list */}
+                <div className="divide-y px-3 md:hidden">
+                  {paginated.map((task) => {
+                    const secs = task.status === "running" ? taskDuration(task, nowSec) : taskDuration(task, 0);
+                    const f = task.findings;
+                    const fTotal = f ? f.critical + f.high + f.medium + f.low : 0;
+                    return (
+                      <div key={task.id} className="flex flex-col gap-2 py-3">
+                        <div className="flex items-start gap-2">
+                          <Checkbox
+                            className="mt-1"
+                            checked={selectedIds.has(task.id)}
+                            onCheckedChange={(checked) => toggleSelected(task.id, checked === true)}
+                            aria-label={t("Select task {id}", { id: task.id })}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <code className="bg-muted shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px]">
+                                #{task.id}
+                              </code>
+                              <Link
+                                href={`/function/tasks/detail?id=${encodeURIComponent(task.id)}`}
+                                className="min-w-0 flex-1 truncate text-sm font-medium hover:underline"
+                              >
+                                {task.name?.trim() ? task.name : task.description || t("Unnamed")}
+                              </Link>
+                              {task.active && <StarIcon className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />}
+                              {taskIsPinned(task) && <PinIcon className="text-primary size-3.5 shrink-0" />}
+                            </div>
+                            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
+                              {task.goal || task.description}
+                            </p>
+                          </div>
+                          <StatusBadge domain="task" value={task.status} dot />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-muted-foreground tabular-nums">
+                          <span>
+                            {t("Goals")}:{" "}
+                            <span className="text-foreground">
+                              {typeof task.goals_total === "number" && task.goals_total > 0
+                                ? `${task.goals_met}/${task.goals_total}`
+                                : "—"}
+                            </span>
+                          </span>
+                          <span>
+                            {t("Findings")}:{" "}
+                            {f && fTotal > 0 ? (
+                              <span className="font-medium text-foreground">
+                                {f.critical}/{f.high}/{f.medium}/{f.low}
+                              </span>
+                            ) : (
+                              "0"
+                            )}
+                          </span>
+                          <span>
+                            {t("Workers")}: <span className="text-foreground">{task.in_flight ?? 0}</span>
+                          </span>
+                          {secs > 0 && <span>{fmtDuration(secs)}</span>}
+                          {task.tokens && (
+                            <span>
+                              {formatTokens(task.tokens.input_tokens + task.tokens.output_tokens)} tok
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between gap-2 pl-6">
+                          <Button size="xs" variant="outline" asChild>
+                            <Link href={`/function/tasks/detail?id=${encodeURIComponent(task.id)}`}>
+                              <EyeIcon className="size-3.5" /> {t("Open")}
+                            </Link>
+                          </Button>
+                          <div className="flex items-center gap-0.5">
+                            <TaskControlButton task={task} onControl={controlTask} />
+                            <TaskPinAction task={task} onTogglePinned={toggleTaskPinned} />
+                            <TaskArchiveAction task={task} onArchive={queueTaskArchive} />
+                            <DeleteTaskDialog task={task} onDelete={deleteTask} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Desktop table */}
+                <div className="hidden md:block">
+                  <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
+                    <TableHeader className="[&_tr]:border-t">
+                      <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={headerChecked}
+                            onCheckedChange={(checked) => toggleSelectedPage(checked === true)}
+                            aria-label={t("Select all tasks on this page")}
+                          />
+                        </TableHead>
+                        <SortableTaskHead
+                          field="id"
+                          label="ID"
+                          activeField={sortField}
+                          direction={sortDirection}
+                          className="font-mono"
+                          onSort={sortTasksBy}
+                        />
+                        <TableHead>{t("Name")}</TableHead>
+                        <TableHead>{t("Description")}</TableHead>
+                        <TableHead>{t("Goal")}</TableHead>
+                        <SortableTaskHead
+                          field="status"
+                          label={t("Status")}
+                          activeField={sortField}
+                          direction={sortDirection}
+                          onSort={sortTasksBy}
+                        />
+                        <TableHead className="text-center">{t("Goal progress")}</TableHead>
+                        <TableHead className="text-center" title={t("Critical / High / Medium / Low")}>
+                          {t("Findings")} <span className="text-muted-foreground font-normal">{t("C/H/M/L")}</span>
+                        </TableHead>
+                        <TableHead className="text-center">{t("Running workers")}</TableHead>
+                        <SortableTaskHead
+                          field="created"
+                          label={t("Created at")}
+                          activeField={sortField}
+                          direction={sortDirection}
+                          align="right"
+                          onSort={sortTasksBy}
+                        />
+                        <SortableTaskHead
+                          field="duration"
+                          label={t("Duration")}
+                          activeField={sortField}
+                          direction={sortDirection}
+                          align="right"
+                          onSort={sortTasksBy}
+                        />
+                        <TableHead className="text-right">{t("Token")}</TableHead>
+                        <TableHead className="sticky right-0 z-10 bg-card text-right shadow-[-1px_0_0_0_hsl(var(--border))]">
+                          {t("Actions")}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginated.map((task) => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          // only running tasks consume nowSec; other rows get 0 — with unchanged props, memo blocks the per-second tick's
+                          // whole-table re-render and only the running rows advance their duration.
+                          nowSec={task.status === "running" ? nowSec : 0}
+                          onDelete={deleteTask}
+                          onControl={controlTask}
+                          onRename={renameTask}
+                          onTogglePinned={toggleTaskPinned}
+                          onArchive={queueTaskArchive}
+                          selected={selectedIds.has(task.id)}
+                          onSelectedChange={toggleSelected}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
             <TablePagination
               page={page}

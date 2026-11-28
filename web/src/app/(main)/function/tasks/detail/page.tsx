@@ -369,53 +369,61 @@ function TaskDetailInner() {
   return (
     <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col gap-0">
       {/* Top fixed area */}
-      <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background/95 px-4 py-2.5 backdrop-blur lg:px-6">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
-          <Button asChild variant="ghost" size="icon" className="size-7">
-            <Link href="/function/tasks">
-              <ArrowLeftIcon />
-            </Link>
-          </Button>
-          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold" title={task.name || task.description}>
-            {task.name || task.description}
-          </h1>
-          <code className="hidden rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:inline">
-            {task.id}
-          </code>
-          <Separator orientation="vertical" className="mx-1 hidden h-4 sm:block" />
-          <TaskLLMControl task={task} profiles={profiles} onUpdated={load} />
-          <StatusBadge domain={terminal ? "task" : "engine"} value={terminal ? task.status : engineMode} dot />
-          {canArchive ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>{archiveTrigger}</AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t("Archive task #{id}?", { id: task.id })}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t(
-                      "The task graph, related records, exclusive assets and traffic, working files, and LLM history will be compressed into cold storage. Once archiving completes, restore it from the \"Archived\" tab of the task list.",
-                    )}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => void archiveTask()}>{t("Confirm archive")}</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">{archiveTrigger}</span>
-              </TooltipTrigger>
-              <TooltipContent>{archiveDisabledReason}</TooltipContent>
-            </Tooltip>
-          )}
-          <Button size="sm" variant={controlVariant} onClick={togglePause} disabled={terminal}>
-            {controlIcon}
-            {controlLabel}
-          </Button>
+      <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background/95 px-3 py-2.5 backdrop-blur sm:px-4 lg:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+            <SidebarTrigger className="-ml-1 shrink-0" />
+            <Button asChild variant="ghost" size="icon" className="size-7 shrink-0">
+              <Link href="/function/tasks">
+                <ArrowLeftIcon />
+              </Link>
+            </Button>
+            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold" title={task.name || task.description}>
+              {task.name || task.description}
+            </h1>
+            <code className="hidden rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:inline">
+              {task.id}
+            </code>
+          </div>
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+            <div className="flex items-center gap-1.5">
+              <Separator orientation="vertical" className="mx-1 hidden h-4 sm:block" />
+              <TaskLLMControl task={task} profiles={profiles} onUpdated={load} />
+              <StatusBadge domain={terminal ? "task" : "engine"} value={terminal ? task.status : engineMode} dot />
+            </div>
+            <div className="flex items-center gap-1.5">
+              {canArchive ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>{archiveTrigger}</AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("Archive task #{id}?", { id: task.id })}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t(
+                          "The task graph, related records, exclusive assets and traffic, working files, and LLM history will be compressed into cold storage. Once archiving completes, restore it from the \"Archived\" tab of the task list.",
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => void archiveTask()}>{t("Confirm archive")}</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">{archiveTrigger}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>{archiveDisabledReason}</TooltipContent>
+                </Tooltip>
+              )}
+              <Button size="sm" variant={controlVariant} onClick={togglePause} disabled={terminal}>
+                {controlIcon}
+                {controlLabel}
+              </Button>
+            </div>
+          </div>
         </div>
         <p className="truncate text-xs text-muted-foreground">{task.goal}</p>
         {/* Tabs */}
@@ -436,7 +444,7 @@ function TaskDetailInner() {
       </header>
 
       {/* Tab content */}
-      <div className="flex-1 p-4 lg:p-6">
+      <div className="flex-1 p-3 pb-20 sm:p-4 sm:pb-20 md:pb-6 lg:p-6">
         <TabsContent value="sessions" className="mt-0">
           <SessionsTab taskId={id} taskPaused={task?.status === "paused"} />
         </TabsContent>

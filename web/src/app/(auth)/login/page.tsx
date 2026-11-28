@@ -93,7 +93,7 @@ export default function LoginPage() {
   const [agreeBefore, agreeAfter = ""] = t("I have read and agree to {terms}").split("{terms}");
 
   return (
-    <div className="flex h-dvh">
+    <div className="flex min-h-dvh">
       {/* Left panel — always dark regardless of theme mode */}
       <div className="hidden flex-col items-center justify-center border-r border-white/10 bg-zinc-950 p-12 text-center text-zinc-50 lg:flex lg:w-1/3">
         <div className="relative flex flex-col items-center justify-center gap-6">
@@ -105,9 +105,12 @@ export default function LoginPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex w-full items-center justify-center bg-background p-8 lg:w-2/3">
-        <div className="w-full max-w-md space-y-10 py-24 lg:py-32">
-          <div className="space-y-4 text-center">
+      <div className="flex w-full items-center justify-center bg-background p-6 sm:p-8 lg:w-2/3">
+        <div className="w-full max-w-md space-y-8 py-8 sm:py-16 lg:space-y-10 lg:py-24">
+          <div className="flex justify-center lg:hidden">
+            <GoliathLogo variant="full" />
+          </div>
+          <div className="space-y-3 text-center">
             <h2 className="text-2xl font-medium tracking-tight">{t("Sign in")}</h2>
             <p className="mx-auto max-w-xl text-muted-foreground">
               {t("Welcome back — enter your password to continue using Goliath")}
@@ -178,7 +181,7 @@ export default function LoginPage() {
           >
             <p className="rounded-lg border bg-muted/40 p-3 text-foreground/80">
               {t(
-                'This Terms of Use and Disclaimer (the "Statement") is the agreement between you and the ARTEX project authors and contributors regarding your use of this software. Please read it carefully and fully understand each provision before use, especially the disclaimer, liability-limitation, and prohibition clauses highlighted in bold or color blocks.',
+                'This Terms of Use and Disclaimer (the "Statement") is the agreement between you and the Goliath project authors and contributors (originally based on Autumn-27\'s ARTEX) regarding your use of this software. Please read it carefully and fully understand each provision before use, especially the disclaimer, liability-limitation, and prohibition clauses highlighted in bold or color blocks.',
               )}
               <span className="font-medium text-foreground">
                 {" "}
@@ -197,7 +200,7 @@ export default function LoginPage() {
               </h4>
               <p className="pl-7">
                 {t(
-                  "This software (ARTEX) is an open-source program released under the GNU Affero General Public License v3.0 (AGPL-3.0). You may freely use, copy, modify, and distribute it under that license; however, any derivative work (including online services provided to third parties over a network) must likewise be open-sourced under the AGPL-3.0 license with the complete corresponding source code made public to its users. The full AGPL-3.0 terms are governed by the accompanying LICENSE file.",
+                  "This software (Goliath, originally based on Autumn-27's ARTEX) is an open-source program released under the GNU Affero General Public License v3.0 (AGPL-3.0). You may freely use, copy, modify, and distribute it under that license; however, any derivative work (including online services provided to third parties over a network) must likewise be open-sourced under the AGPL-3.0 license with the complete corresponding source code made public to its users. The full AGPL-3.0 terms are governed by the accompanying LICENSE file.",
                 )}
               </p>
             </section>

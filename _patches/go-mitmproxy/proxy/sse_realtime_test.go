@@ -339,10 +339,10 @@ func TestSSEImmediateTriggering(t *testing.T) {
 // SSERealTimeTestAddon 测试 SSE 实时性的 addon
 type SSERealTimeTestAddon struct {
 	BaseAddon
-	eventTimestamps []time.Time    // 每个 SSE 事件的触发时间
-	triggerSequence []string       // 触发顺序记录
-	streamNotCompleted bool         // 流是否仍在进行中
-	mu              sync.Mutex
+	eventTimestamps    []time.Time // 每个 SSE 事件的触发时间
+	triggerSequence    []string    // 触发顺序记录
+	streamNotCompleted bool        // 流是否仍在进行中
+	mu                 sync.Mutex
 }
 
 func (addon *SSERealTimeTestAddon) SSEStart(f *Flow) {

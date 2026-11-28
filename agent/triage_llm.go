@@ -47,7 +47,7 @@ func (c *ChatTriageClient) Duplicate(ctx context.Context, cand TriageCandidate, 
 	msg, _, _, err := c.Provider.Complete(ctx, llm.CompletionRequest{
 		System:    []string{"You are a strict security finding deduplication judge. Output valid JSON only, no markdown fences."},
 		Messages:  []llm.Message{llm.UserText(prompt)},
-		MaxTokens: 256,
+		MaxTokens: 1024,
 	})
 	if err != nil {
 		return DuplicateAnswer{}, err
@@ -84,7 +84,7 @@ func (c *ChatTriageClient) EvaluateFalsePositive(ctx context.Context, cand Triag
 	if c == nil || c.Provider == nil {
 		return FPReviewResult{}, fmt.Errorf("triage: provider is nil")
 	}
-	snippet := clipForTriage(proofSnippet, 1800)
+	snippet := clipForTriage(proofSnippet, 3200)
 	prompt := fmt.Sprintf(
 		"Evaluate if this reported security finding is a FALSE POSITIVE based on the proof snippet.\nFinding: %s (class=%s, severity=%s)\nSummary: %s\nProof:\n%s\n\nRespond with ONLY JSON: {\"likely_fp\": true|false, \"confidence\": 0.0..1.0, \"reason\": \"short explanation\"}",
 		cand.Name, cand.VulnClass, cand.Severity, clipForTriage(cand.Summary, 400), snippet,
@@ -95,7 +95,7 @@ func (c *ChatTriageClient) EvaluateFalsePositive(ctx context.Context, cand Triag
 	msg, _, _, err := c.Provider.Complete(ctx, llm.CompletionRequest{
 		System:    []string{"You are a senior AppSec triage reviewer. Output valid JSON only, no markdown fences."},
 		Messages:  []llm.Message{llm.UserText(prompt)},
-		MaxTokens: 256,
+		MaxTokens: 1024,
 	})
 	if err != nil {
 		return FPReviewResult{}, err
@@ -118,6 +118,15 @@ func containsFindingID(existing []TriageCandidate, id int64) bool {
 
 func extractJSONObject(s string) string {
 	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		if nl := strings.IndexByte(s, '\n'); nl >= 0 {
+			s = s[nl+1:]
+		}
+		if end := strings.LastIndex(s, "```"); end >= 0 {
+			s = s[:end]
+		}
+		s = strings.TrimSpace(s)
+	}
 	start := strings.IndexByte(s, '{')
 	end := strings.LastIndexByte(s, '}')
 	if start >= 0 && end > start {

@@ -55,7 +55,7 @@ func NewCompactor(prov llm.Provider, model string) *Compactor {
 		n:        20,
 		m:        8,
 		cooldown: 60 * time.Second,
-		maxDur:   5 * time.Minute,
+		maxDur:   10 * time.Minute,
 		running:  map[int64]bool{},
 		lastRun:  map[int64]time.Time{},
 	}
@@ -256,7 +256,9 @@ func (c *Compactor) major(ctx context.Context, ts *db.ExplorationStore) {
 // changed, so any member that has since gone hot (revived) is dropped from the
 // covers set. If the block dissolves below K it is skipped.
 func (c *Compactor) foldBlock(ctx context.Context, ts *db.ExplorationStore, g *coldGraph, b block, nodeByID map[int64]*db.Node, cvers map[int64]int, generation int) {
-	body, err := c.compress(ctx, g, b, nodeByID)
+	blockCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+	body, err := c.compress(blockCtx, g, b, nodeByID)
 	if err != nil {
 		slog.Warn("[compaction] compress failed", "exp", ts.ID(), "block", b.Members, "err", err)
 		return
@@ -556,7 +558,7 @@ func (c *Compactor) compress(ctx context.Context, g *coldGraph, b block, nodeByI
 	req := llm.CompletionRequest{
 		System:    []string{compressionSystem},
 		Messages:  []llm.Message{llm.UserText(buildCompressionInput(g, b, nodeByID))},
-		MaxTokens: 1500,
+		MaxTokens: 4096,
 	}
 	msg, _, _, err := c.prov.Complete(ctx, req)
 	if err != nil && isThinkingBetweenToolsError(err) {
@@ -568,7 +570,20 @@ func (c *Compactor) compress(ctx context.Context, g *coldGraph, b block, nodeByI
 	}
 	body := strings.TrimSpace(msg.Text())
 	if body == "" {
-		return "", fmt.Errorf("empty body from model")
+		// Reasoning models occasionally consume output budget or emit an empty final
+		// message; retry once with an explicit instruction to output the digest.
+		retryReq := req
+		retryReq.Messages = append(append([]llm.Message(nil), req.Messages...),
+			llm.UserText("Output the plain-text digest directly in your response body."),
+		)
+		msg, _, _, err = c.prov.Complete(ctx, retryReq)
+		if err != nil {
+			return "", err
+		}
+		body = strings.TrimSpace(msg.Text())
+		if body == "" {
+			return "", fmt.Errorf("empty body from model")
+		}
 	}
 	return body, nil
 }

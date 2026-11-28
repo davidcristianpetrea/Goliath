@@ -383,7 +383,7 @@ func (s *Server) llmPoolStatus() map[string]any {
 	}
 	health := s.llmHealth.Snapshot()
 	now := time.Now()
-	// Chain order: active first, then priority DESC / id ASC — the same ordering
+	// Chain order: active first, then priority ASC (0 = highest) / id ASC — the same ordering
 	// PoolProfiles applies, recomputed here so excluded ones can be shown in place.
 	chain := make([]LLMPoolMemberStatus, 0, len(all))
 	for _, p := range all {
@@ -411,7 +411,7 @@ func (s *Server) llmPoolStatus() map[string]any {
 }
 
 // sortPoolStatus orders the status rows exactly like the live chain: active first,
-// then priority DESC, then id ASC (the incoming slice is already id-ordered, so a
+// then priority ASC (0 = highest), then id ASC (the incoming slice is already id-ordered, so a
 // stable insertion sort on the first two keys is enough).
 func sortPoolStatus(in []LLMPoolMemberStatus) {
 	for i := 1; i < len(in); i++ {
@@ -425,5 +425,5 @@ func poolLess(a, b LLMPoolMemberStatus) bool {
 	if a.Active != b.Active {
 		return a.Active
 	}
-	return a.Priority > b.Priority
+	return a.Priority < b.Priority
 }
