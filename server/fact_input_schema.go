@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/Autumn-27/artex/agent"
+	"github.com/Autumn-27/artex/db"
 )
 
 // SeedTool only inserts new rows. Repair existing built-ins too, while keeping
@@ -83,6 +84,7 @@ func (s *Server) refreshRecordFactContract() {
 	if err != nil {
 		return
 	}
+	raw = db.JsonbClean(raw)
 	if _, err := s.m.pg.Exec(`UPDATE tools SET description=$1, schema=$2::jsonb, updated_at=now()
 WHERE key='record_fact' AND system AND kind='builtin'
   AND (description IS DISTINCT FROM $1 OR schema IS DISTINCT FROM $2::jsonb)`, desc, string(raw)); err != nil {
@@ -121,11 +123,12 @@ func (s *Server) seedFactInputSchema() {
 		log.Printf("[facts] encode record_fact schema: %v", err)
 		return
 	}
+	raw = db.JsonbClean(raw)
 	// Compare-and-swap preserves concurrent operator edits; JSONB equality
 	// avoids changing updated_at again on every startup.
 	if _, err := s.m.pg.Exec(`UPDATE tools SET schema=$2::jsonb, updated_at=now()
 WHERE key='record_fact' AND system AND kind='builtin'
-  AND schema=$1::jsonb AND schema IS DISTINCT FROM $2::jsonb`, string(row.Schema), string(raw)); err != nil {
+  AND schema=$1::jsonb AND schema IS DISTINCT FROM $2::jsonb`, string(db.JsonbClean(row.Schema)), string(raw)); err != nil {
 		log.Printf("[facts] repair record_fact schema: %v", err)
 	}
 }

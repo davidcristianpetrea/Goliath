@@ -2204,9 +2204,6 @@ func (s *Server) pgSaveProfile(w http.ResponseWriter, r *http.Request) {
 	if p.MaxTokens < 0 {
 		p.MaxTokens = 0
 	}
-	if p.Priority < 0 {
-		p.Priority = 0
-	}
 	var stored *db.LLMProfile
 	if p.ID != 0 && (body.PriceInputPerM == nil || body.PriceOutputPerM == nil || body.PriceCacheReadPerM == nil || body.PriceCacheWritePerM == nil) {
 		var err error

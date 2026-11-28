@@ -352,7 +352,7 @@ function PoolSheet({
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 pl-7 text-muted-foreground text-xs">
                         <code className="truncate font-mono">{m.model}</code>
-                        <span>{t("Priority {priority}", { priority: m.priority })}</span>
+                        {!m.active && <span>{t("Priority {priority}", { priority: m.priority })}</span>}
                       </div>
                       {m.last_error && (
                         <p className="truncate pl-7 font-mono text-muted-foreground text-xs" title={m.last_error}>
@@ -371,7 +371,7 @@ function PoolSheet({
 
               <div className="rounded-lg border border-dashed p-3 text-muted-foreground text-xs leading-relaxed">
                 {t(
-                  "The active profile is always first; the rest follow priority starting from 0 (0 is highest, set per profile). After a failure a profile enters a cooldown (60s → 5min → 30min), is skipped while cooling down, and switches back automatically once recovered. Profiles whose context window cannot fit the current request are skipped. Agents and tasks with a pinned model do not join the pool by default.",
+                  "The active profile is always first; the rest follow priority from high to low (set per profile). After a failure a profile enters a cooldown (60s → 5min → 30min), is skipped while cooling down, and switches back automatically once recovered. Profiles whose context window cannot fit the current request are skipped. Agents and tasks with a pinned model do not join the pool by default.",
                 )}
               </div>
             </>
@@ -411,7 +411,7 @@ function ProfileSheet({
   const [prices, setPrices] = React.useState({ input: "0", output: "0", cacheRead: "0", cacheWrite: "0" }); // EUR per 1M tokens; 0 = unset
   const [thinkingType, setThinkingType] = React.useState(NONE);
   const [effort, setEffort] = React.useState(NONE);
-  const [priority, setPriority] = React.useState("0"); // pool order; 0 = highest
+  const [priority, setPriority] = React.useState("0"); // pool order; higher = tried earlier
   const [poolExclude, setPoolExclude] = React.useState(false);
   const [streaming, setStreaming] = React.useState(true); // true = streaming (default); false = non-streaming
   const [maxTokens, setMaxTokens] = React.useState("0"); // per-reply output cap; 0 = not sent
@@ -563,7 +563,7 @@ function ProfileSheet({
         price_cache_write_per_m: Math.max(0, Number(prices.cacheWrite) || 0),
         thinking_type: toStore(thinkingType),
         reasoning_effort: toStore(effort),
-        priority: Math.max(0, Number(priority) || 0),
+        priority: Number(priority) || 0,
         pool_exclude: poolExclude,
         streaming,
         max_tokens: Math.max(0, Number(maxTokens) || 0),
@@ -911,14 +911,13 @@ function ProfileSheet({
                 </Label>
                 <p className="text-muted-foreground text-xs">
                   {t(
-                    "Lower numbers are picked first starting from 0 (0 is highest); the active profile is always first regardless of this value. Profiles with equal priority take turns leading, spreading quota naturally.",
+                    "Higher numbers are picked first; the active profile is always first regardless of this value. Profiles with equal priority take turns leading, spreading quota naturally.",
                   )}
                 </p>
               </div>
               <Input
                 id="p-priority"
                 type="number"
-                min={0}
                 className="w-24 shrink-0"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
@@ -1163,15 +1162,7 @@ export default function LLMPage() {
 
         <TabsContent value="profiles" className="mt-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {[...profiles]
-              .sort((a, b) =>
-                a.is_default !== b.is_default
-                  ? a.is_default
-                    ? -1
-                    : 1
-                  : (a.priority ?? 0) - (b.priority ?? 0) || Number(a.id) - Number(b.id),
-              )
-              .map((p) => {
+            {profiles.map((p) => {
               const h = healthOf(p, health.get(p.id));
               return (
                 // biome-ignore lint/a11y/useSemanticElements: the card contains its own action buttons; a native <button> would nest buttons (invalid HTML)
@@ -1228,6 +1219,7 @@ export default function LLMPage() {
                       )}
                       {/* The two pool-related fields only matter when the pool is on; when it is off they take no space */}
                       {poolOn &&
+                        !p.is_default &&
                         (p.pool_exclude ? (
                           <span>{t("Excluded from pool")}</span>
                         ) : (

@@ -35,6 +35,11 @@ func (d *DB) SeedTool(key, desc string, schema, agents json.RawMessage) error {
 	if len(agents) == 0 {
 		agents = json.RawMessage("[]")
 	}
+	// Sanitize JSON before inserting into PostgreSQL jsonb columns: tool
+	// descriptions and schemas can contain Unicode escapes that jsonb rejects
+	// (NUL, lone surrogates). jsonbClean strips those.
+	schema = jsonbClean(schema)
+	agents = jsonbClean(agents)
 	_, err := d.Exec(`
 INSERT INTO tools(key, system, description, schema, agents, enabled)
 VALUES ($1, true, $2, $3, $4, true)

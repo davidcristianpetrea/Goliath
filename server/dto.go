@@ -628,7 +628,7 @@ type LLMProfileDTO struct {
 	ThinkingType    string  `json:"thinking_type"`
 	ReasoningEffort string  `json:"reasoning_effort"`
 	IsDefault       bool    `json:"is_default"`
-	// Pooling (failover) parameters: lower priority is picked first starting from 0 (0 = highest; the active
+	// Pooling (failover) parameters: higher priority is picked first (the active
 	// profile is always the chain head); pool_exclude=true excludes it as a failover target, though agents/tasks can still bind it explicitly.
 	Priority    int  `json:"priority"`
 	PoolExclude bool `json:"pool_exclude"`

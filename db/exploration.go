@@ -62,25 +62,55 @@ func utf8Clean(s string) string {
 }
 
 // jsonbClean makes marshaled JSON safe for a PostgreSQL jsonb column. json.Marshal
-// faithfully encodes a NUL byte (U+0000) as the 6-byte escape sequence \u0000; the
-// json type stores it, but jsonb rejects it with "unsupported Unicode escape
-// sequence" (SQLSTATE 22P05). Captured HTTP/tool bytes can carry NULs, so drop the
-// escape — this also covers NULs nested inside json.RawMessage fields, which are
-// copied verbatim into the output. Only a *real* escape is stripped: a \u0000 is
-// genuine when preceded by an even number of backslashes, so an escaped-backslash
-// run such as \\u0000 (the literal text u0000) is left intact.
-func jsonbClean(b []byte) []byte {
-	if !bytes.Contains(b, []byte("\\u0000")) {
+// faithfully encodes several characters as \uXXXX escape sequences that PostgreSQL
+// jsonb may reject depending on the server encoding:
+//   - \u0000 (NUL): always rejected by jsonb (SQLSTATE 22P05)
+//   - \uD800-\uDFFF (lone surrogates): rejected by the JSON spec
+//   - Non-ASCII escapes (\u0080+): rejected when server_encoding is SQL_ASCII
+//     because PostgreSQL cannot translate them to the target encoding
+//
+// The fix: replace each problematic \uXXXX with the character's raw UTF-8 bytes,
+// which PostgreSQL stores verbatim regardless of encoding. \u0000 is stripped
+// entirely (NUL has no sensible text representation). Only a *real* escape is
+// touched: a \u0000 is genuine when preceded by an even number of backslashes.
+func jsonbClean(b []byte) []byte { return JsonbClean(b) }
+
+// JsonbClean is the exported version of jsonbClean, for use by other packages
+// (e.g. server) that marshal JSON before writing it to PostgreSQL jsonb columns.
+func JsonbClean(b []byte) []byte {
+	if !bytes.Contains(b, []byte("\\u")) {
 		return b
 	}
 	out := make([]byte, 0, len(b))
 	bs := 0 // consecutive backslashes already emitted before position i
 	for i := 0; i < len(b); i++ {
-		if b[i] == '\\' && bs%2 == 0 && i+5 < len(b) &&
-			b[i+1] == 'u' && b[i+2] == '0' && b[i+3] == '0' && b[i+4] == '0' && b[i+5] == '0' {
-			i += 5 // skip the whole \u0000
-			bs = 0
-			continue
+		if b[i] == '\\' && bs%2 == 0 && i+5 < len(b) && b[i+1] == 'u' {
+			hex := b[i+2 : i+6]
+			if isHexDigits(hex) {
+				cp := hexVal(hex)
+				if cp == 0 {
+					// \u0000 → drop entirely (NUL)
+					i += 5
+					bs = 0
+					continue
+				}
+				if cp >= 0xD800 && cp <= 0xDFFF {
+					// Lone surrogate → drop (invalid Unicode)
+					i += 5
+					bs = 0
+					continue
+				}
+				if cp > 0x7F {
+					// Non-ASCII \uXXXX → replace with raw UTF-8 bytes
+					// so PostgreSQL doesn't need to translate the escape
+					var buf [4]byte
+					n := encodeRuneToUTF8(buf[:], rune(cp))
+					out = append(out, buf[:n]...)
+					i += 5
+					bs = 0
+					continue
+				}
+			}
 		}
 		if b[i] == '\\' {
 			bs++
@@ -90,6 +120,56 @@ func jsonbClean(b []byte) []byte {
 		out = append(out, b[i])
 	}
 	return out
+}
+
+func isHexDigits(b []byte) bool {
+	for _, c := range b {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return len(b) == 4
+}
+
+func hexVal(b []byte) int {
+	v := 0
+	for _, c := range b {
+		v <<= 4
+		switch {
+		case c >= '0' && c <= '9':
+			v |= int(c - '0')
+		case c >= 'a' && c <= 'f':
+			v |= int(c-'a') + 10
+		case c >= 'A' && c <= 'F':
+			v |= int(c-'A') + 10
+		}
+	}
+	return v
+}
+
+// encodeRuneToUTF8 encodes a rune into buf (must be at least 4 bytes) and returns
+// the number of bytes written. This avoids importing unicode/utf8 in this file.
+func encodeRuneToUTF8(buf []byte, r rune) int {
+	switch {
+	case r < 0x80:
+		buf[0] = byte(r)
+		return 1
+	case r < 0x800:
+		buf[0] = byte(0xC0 | (r >> 6))
+		buf[1] = byte(0x80 | (r & 0x3F))
+		return 2
+	case r < 0x10000:
+		buf[0] = byte(0xE0 | (r >> 12))
+		buf[1] = byte(0x80 | ((r >> 6) & 0x3F))
+		buf[2] = byte(0x80 | (r & 0x3F))
+		return 3
+	default:
+		buf[0] = byte(0xF0 | (r >> 18))
+		buf[1] = byte(0x80 | ((r >> 12) & 0x3F))
+		buf[2] = byte(0x80 | ((r >> 6) & 0x3F))
+		buf[3] = byte(0x80 | (r & 0x3F))
+		return 4
+	}
 }
 
 // Node is a typed reasoning node (= old task_nodes). kind ∈ goal|intent|finding|hint.

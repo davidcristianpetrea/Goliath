@@ -81,3 +81,8 @@ require (
 )
 
 replace github.com/Autumn-27/norma => github.com/BaaRai/Norma v0.4.12
+
+// Patch: go-mitmproxy v1.9.2 has a nil-dereference in the SOCKS5 upstream
+// proxy path (helper/proxy.go:40 calls conn.Close() on a nil conn when
+// DialContext fails). Our local copy fixes that one line.
+replace github.com/lqqyt2423/go-mitmproxy => ./_patches/go-mitmproxy

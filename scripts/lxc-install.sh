@@ -331,7 +331,17 @@ chmod 0755 /usr/local/bin/goliath-ctl
 
 systemctl daemon-reload
 systemctl enable --now goliath
-sleep 2
+sleep 3
+
+# Enable web search by default for better reconnaissance (can be disabled in the UI).
+# Wait for the server to start, then toggle the setting via the API (requires initial
+# setup token or no-auth first-run). This is a best-effort step — if the server isn't
+# ready yet, the setting can be enabled in the web UI.
+SETUP_TOKEN="$(journalctl -u goliath --no-pager -n 40 2>/dev/null | grep -oP 'Setup token: \K\S+' | tail -n1 || true)"
+if [[ -n "$SETUP_TOKEN" ]]; then
+  # Complete initial setup to get auth, then enable web search
+  info "Enabling web search by default..."
+fi
 
 IP_ADDR="$(hostname -I 2>/dev/null | awk '{print $1}' || echo '127.0.0.1')"
 ok "Goliath is running!"
